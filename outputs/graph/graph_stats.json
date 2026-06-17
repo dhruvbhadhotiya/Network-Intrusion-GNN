@@ -1,0 +1,65 @@
+{
+  "n_nodes": 51,
+  "n_nodes_known": 50,
+  "unk_node_idx": 50,
+  "node_feat_dim": 11,
+  "edge_feat_dim": 37,
+  "n_classes_binary": 2,
+  "n_classes_multi": 10,
+  "class_names": [
+    "Analysis",
+    "Backdoor",
+    "DoS",
+    "Exploits",
+    "Fuzzers",
+    "Generic",
+    "Normal",
+    "Reconnaissance",
+    "Shellcode",
+    "Worms"
+  ],
+  "splits": {
+    "train": {
+      "num_nodes": 51,
+      "num_edges": 1647526,
+      "unique_src_dst_pairs": 311,
+      "graph_density": 646.088627,
+      "weakly_connected_components": 6,
+      "mean_out_degree": 32304.43,
+      "max_out_degree": 154082,
+      "mean_in_degree": 32304.43,
+      "max_in_degree": 154219,
+      "attack_edge_ratio": 0.048384,
+      "normal_edges": 1567812,
+      "attack_edges": 79714
+    },
+    "val": {
+      "num_nodes": 51,
+      "num_edges": 411882,
+      "unique_src_dst_pairs": 286,
+      "graph_density": 161.522353,
+      "weakly_connected_components": 8,
+      "mean_out_degree": 8076.12,
+      "max_out_degree": 38804,
+      "mean_in_degree": 8076.12,
+      "max_in_degree": 38687,
+      "attack_edge_ratio": 0.048385,
+      "normal_edges": 391953,
+      "attack_edges": 19929
+    },
+    "test": {
+      "num_nodes": 51,
+      "num_edges": 82332,
+      "unique_src_dst_pairs": 1,
+      "graph_density": 32.287059,
+      "weakly_connected_components": 51,
+      "mean_out_degree": 1614.35,
+      "max_out_degree": 82332,
+      "mean_in_degree": 1614.35,
+      "max_in_degree": 82332,
+      "attack_edge_ratio": 0.5506,
+      "normal_edges": 37000,
+      "attack_edges": 45332
+    }
+  }
+}

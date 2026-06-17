@@ -1,0 +1,182 @@
+{
+  "total_records": 2540047,
+  "total_numeric_features": 37,
+  "per_file_stats": [
+    {
+      "file": "UNSW-NB15_1.csv",
+      "total": 700001,
+      "normal": "677786",
+      "attack": "22215"
+    },
+    {
+      "file": "UNSW-NB15_2.csv",
+      "total": 700001,
+      "normal": "647252",
+      "attack": "52749"
+    },
+    {
+      "file": "UNSW-NB15_3.csv",
+      "total": 700001,
+      "normal": "542576",
+      "attack": "157425"
+    },
+    {
+      "file": "UNSW-NB15_4.csv",
+      "total": 440044,
+      "normal": "351150",
+      "attack": "88894"
+    }
+  ],
+  "binary_label_counts": {
+    "Normal": 2218764,
+    "Attack": 321283
+  },
+  "binary_label_pct": {
+    "Normal": 87.35,
+    "Attack": 12.65
+  },
+  "imbalance_ratio": 6.91,
+  "attack_cat_counts": {
+    "Normal": 2218764,
+    "Generic": 215481,
+    "Exploits": 44525,
+    "Fuzzers": 24246,
+    "DoS": 16353,
+    "Reconnaissance": 13987,
+    "Analysis": 2677,
+    "Backdoor": 2329,
+    "Shellcode": 1511,
+    "Worms": 174
+  },
+  "duplicate_rows": 480632,
+  "zero_variance_features": [],
+  "high_corr_pairs_count": 8,
+  "high_corr_pairs": [
+    {
+      "Feature_A": "dwin",
+      "Feature_B": "swin",
+      "r": 0.9973004348334094
+    },
+    {
+      "Feature_A": "Dpkts",
+      "Feature_B": "dloss",
+      "r": 0.9910010076063037
+    },
+    {
+      "Feature_A": "dloss",
+      "Feature_B": "dbytes",
+      "r": 0.9907594786880469
+    },
+    {
+      "Feature_A": "Dpkts",
+      "Feature_B": "dbytes",
+      "r": 0.9682372821257346
+    },
+    {
+      "Feature_A": "sloss",
+      "Feature_B": "sbytes",
+      "r": 0.9629239091025903
+    },
+    {
+      "Feature_A": "ct_src_dport_ltm",
+      "Feature_B": "ct_dst_ltm",
+      "r": 0.9598726027345739
+    },
+    {
+      "Feature_A": "ct_srv_dst",
+      "Feature_B": "ct_srv_src",
+      "r": 0.9571916949584831
+    },
+    {
+      "Feature_A": "ct_dst_src_ltm",
+      "Feature_B": "ct_srv_dst",
+      "r": 0.9509315708182002
+    }
+  ],
+  "pca_variance_explained": 0.9998,
+  "top20_important_features": [
+    "sttl",
+    "ct_state_ttl",
+    "Dload",
+    "dbytes",
+    "Dintpkt",
+    "dttl",
+    "dmeansz",
+    "state",
+    "Dpkts",
+    "smeansz",
+    "Sload",
+    "sbytes",
+    "dur",
+    "ackdat",
+    "tcprtt",
+    "synack",
+    "dloss",
+    "Sintpkt",
+    "ct_dst_src_ltm",
+    "ct_dst_sport_ltm"
+  ],
+  "categorical_cardinality": {
+    "proto": 135,
+    "service": 13,
+    "state": 16
+  },
+  "null_counts": {
+    "srcip": 0,
+    "sport": 0,
+    "dstip": 0,
+    "dsport": 0,
+    "proto": 0,
+    "state": 0,
+    "dur": 0,
+    "sbytes": 0,
+    "dbytes": 0,
+    "sttl": 0,
+    "dttl": 0,
+    "sloss": 0,
+    "dloss": 0,
+    "service": 0,
+    "Sload": 0,
+    "Dload": 0,
+    "Spkts": 0,
+    "Dpkts": 0,
+    "swin": 0,
+    "dwin": 0,
+    "stcpb": 0,
+    "dtcpb": 0,
+    "smeansz": 0,
+    "dmeansz": 0,
+    "trans_depth": 0,
+    "res_bdy_len": 0,
+    "Sjit": 0,
+    "Djit": 0,
+    "Stime": 0,
+    "Ltime": 0,
+    "Sintpkt": 0,
+    "Dintpkt": 0,
+    "tcprtt": 0,
+    "synack": 0,
+    "ackdat": 0,
+    "is_sm_ips_ports": 0,
+    "ct_state_ttl": 0,
+    "ct_flw_http_mthd": 1348145,
+    "is_ftp_login": 1429879,
+    "ct_ftp_cmd": 0,
+    "ct_srv_src": 0,
+    "ct_srv_dst": 0,
+    "ct_dst_ltm": 0,
+    "ct_src_ltm": 0,
+    "ct_src_dport_ltm": 0,
+    "ct_dst_sport_ltm": 0,
+    "ct_dst_src_ltm": 0,
+    "attack_cat": 0,
+    "label": 0,
+    "Stime_num": 0,
+    "datetime": 0,
+    "hour_bin": 0
+  },
+  "date_range": {
+    "start": "2015-01-22 11:49:37",
+    "end": "2015-02-18 12:21:08"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "n_nodes": 50,
+  "node_feat_dim": 11,
+  "node_feat_cols": [
+    "out_degree",
+    "mean_sbytes",
+    "mean_dur",
+    "unique_dsport",
+    "unique_proto",
+    "src_attack_ratio",
+    "in_degree",
+    "mean_dbytes",
+    "dst_attack_ratio",
+    "total_degree",
+    "total_bytes"
+  ],
+  "computed_from": "training rows only (anti-leakage)"
+}

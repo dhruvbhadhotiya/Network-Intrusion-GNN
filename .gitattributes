@@ -1,0 +1,13 @@
+# Normalise line endings to LF on commit
+* text=auto eol=lf
+
+# Treat notebooks as text
+*.ipynb text eol=lf
+
+# Binary files — no line ending conversion
+*.png binary
+*.pkl binary
+*.npy binary
+*.pt  binary
+*.pdf binary
+*.csv text eol=lf
