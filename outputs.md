@@ -295,31 +295,125 @@ G = (V, E)  — homogeneous directed graph
 
 ## § Phase 4 — Baseline Models
 
-> Status: 🔲 Not Started
+> Status: ✅ Complete
 
-### 4.1 Binary Classification Results
+**Trained on Kaggle (GPU T4 × 2).** All 5 models × 2 tasks trained with `RandomizedSearchCV` hyperparameter tuning on 200 k stratified subsample, then refit on full resampled data.
 
-| Model | Accuracy | Precision | Recall | F1 | ROC-AUC | FPR | Train Time |
-|---|---|---|---|---|---|---|---|
-| Logistic Regression | — | — | — | — | — | — | — |
-| Random Forest | — | — | — | — | — | — | — |
-| XGBoost | — | — | — | — | — | — | — |
-| LightGBM | — | — | — | — | — | — | — |
-| MLP | — | — | — | — | — | — | — |
+> ⚠️ **Distribution shift:** Val attack ratio = 4.84% | Test attack ratio = 55.06% — both splits reported below.
 
-### 4.2 Multiclass Classification Results (F1 per category)
+### 4.1 Binary Classification Results — Val Set (attack ratio 4.84%)
 
-| Model | Normal | Fuzzers | Analysis | Backdoors | DoS | Exploits | Generic | Recon | Shellcode | Worms | Macro-F1 |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| Logistic Regression | — | — | — | — | — | — | — | — | — | — | — |
-| Random Forest | — | — | — | — | — | — | — | — | — | — | — |
-| XGBoost | — | — | — | — | — | — | — | — | — | — | — |
-| MLP | — | — | — | — | — | — | — | — | — | — | — |
+| Model | Accuracy | Precision | Recall | F1 | ROC-AUC | FPR |
+|---|---|---|---|---|---|---|
+| Logistic Regression | 0.9745 | 0.6559 | 0.9931 | 0.7901 | 0.9853 | 0.0265 |
+| Random Forest | 0.9866 | 0.7841 | 0.9979 | 0.8782 | 0.9991 | 0.0140 |
+| XGBoost | 0.9884 | 0.8112 | 0.9910 | 0.8922 | 0.9993 | 0.0117 |
+| **LightGBM** | **0.9889** | **0.8204** | **0.9853** | **0.8953** | **0.9989** | **0.0110** |
+| MLP | 0.9860 | 0.7757 | 0.9997 | 0.8736 | 0.9989 | 0.0147 |
 
-### 4.3 Best Baseline
+### 4.2 Binary Classification Results — Test Set (attack ratio 55.06%)
 
-- Binary: **?** with F1=—
-- Multiclass: **?** with F1-macro=—
+| Model | Accuracy | Precision | Recall | F1 | ROC-AUC | FPR |
+|---|---|---|---|---|---|---|
+| Logistic Regression | 0.7702 | 0.7072 | 0.9942 | 0.8265 | 0.6485 | 0.5043 |
+| **Random Forest** | **0.8233** | **0.7572** | **0.9997** | **0.8617** | **0.9691** | **0.3928** |
+| XGBoost | 0.7911 | 0.7250 | 0.9999 | 0.8405 | 0.9745 | 0.4646 |
+| LightGBM | 0.7740 | 0.7093 | 0.9990 | 0.8296 | 0.9375 | 0.5017 |
+| MLP | 0.7977 | 0.7314 | 0.9997 | 0.8448 | 0.9769 | 0.4498 |
+
+### 4.3 Multiclass Classification Results — Val Set (attack ratio 4.84%)
+
+| Model | Accuracy | F1-Macro | F1-Weighted |
+|---|---|---|---|
+| Logistic Regression | 0.4823 | 0.1168 | 0.6252 |
+| Random Forest | 0.9779 | 0.6131 | 0.9816 |
+| XGBoost | 0.9840 | 0.6273 | 0.9845 |
+| **LightGBM** | **0.9773** | **0.6574** | **0.9814** |
+| MLP | 0.9713 | 0.5309 | 0.9766 |
+
+### 4.4 Multiclass Classification Results — Test Set (attack ratio 55.06%)
+
+| Model | Accuracy | F1-Macro | F1-Weighted |
+|---|---|---|---|
+| Logistic Regression | 0.4053 | 0.1913 | 0.4053 |
+| **Random Forest** | **0.6862** | **0.4605** | **0.7295** |
+| XGBoost | 0.6118 | 0.3276 | 0.6450 |
+| LightGBM | 0.5877 | 0.3234 | 0.6324 |
+| MLP | 0.6389 | 0.3815 | 0.6938 |
+
+### 4.5 Per-class F1 — Best Multiclass Model (LightGBM, Val Set)
+
+| Class | F1 (Val) | F1 (Test) |
+|---|---|---|
+| Analysis | 0.1736 | 0.1065 |
+| Backdoor | 0.1535 | 0.1487 |
+| DoS | 0.4205 | 0.1555 |
+| Exploits | 0.8274 | 0.4889 |
+| Fuzzers | 0.5949 | 0.2808 |
+| Generic | 0.9467 | 0.9798 |
+| Normal | 0.9928 | 0.6530 |
+| Reconnaissance | 0.8440 | 0.4212 |
+| Shellcode | 0.9003 | 0.0000 |
+| Worms | 0.7200 | 0.0000 |
+
+> ⚠️ Shellcode and Worms collapse to F1=0 on the test set — likely due to class distribution shift and very few test samples for these rare attack categories.
+
+### 4.6 Best Hyperparameters Found
+
+| Model | Task | Best Params |
+|---|---|---|
+| LR | Binary | `C=0.001, solver=lbfgs, penalty=l2` |
+| LR | Multiclass | `C=1.0, solver=lbfgs` |
+| RF | Binary | `n_estimators=300, max_depth=20, max_features=sqrt, min_samples_split=2, min_samples_leaf=1` |
+| RF | Multiclass | `n_estimators=200, max_depth=30, max_features=sqrt, min_samples_split=10, min_samples_leaf=2` |
+| XGBoost | Binary | `max_depth=10, lr=0.05, n_estimators=500, subsample=0.8, colsample=0.6, gamma=0.2, reg_α=0.01, reg_λ=2.0` |
+| XGBoost | Multiclass | `max_depth=8, lr=0.03, n_estimators=300, subsample=0.8, colsample=1.0, reg_λ=0.5` |
+| LightGBM | Binary | `num_leaves=255, lr=0.15, n_estimators=300, subsample=0.8, colsample=0.8, min_child=10` |
+| LightGBM | Multiclass | `num_leaves=31, lr=0.1, n_estimators=200, subsample=0.6, colsample=0.8, min_child=10` |
+| MLP | Binary | `hidden=(512,256,128), lr=1e-3, dropout=0.3` |
+| MLP | Multiclass | `hidden=(256,128), lr=1e-3, dropout=0.3` |
+
+### 4.7 HPO Strategy
+
+| Model | Search | n_iter | cv | Subsample |
+|---|---|---|---|---|
+| Logistic Regression | RandomizedSearchCV | 8 | 3 | 200k |
+| Random Forest | RandomizedSearchCV | 8 | 3 | 200k |
+| XGBoost | RandomizedSearchCV | 10 | 3 | 200k |
+| LightGBM | RandomizedSearchCV | 10 | 3 | 200k |
+| MLP | Manual arch search (4 configs × 5 epochs) | — | — | 200k |
+
+- XGBoost / LightGBM final training uses `early_stopping_rounds=50` monitored on val set
+- MLP final training: 30 max epochs, early stopping patience=5 on val F1
+
+### 4.8 Best Baseline Summary
+
+- **Binary — Best Val F1:** `lgbm_binary` (val F1=**0.8953**, test F1=0.8296)
+- **Binary — Best Test F1:** `rf_binary` (val F1=0.8782, test F1=**0.8617**)
+- **Multiclass — Best Val F1-Macro:** `lgbm_multiclass` (val F1-macro=**0.6574**, test F1-macro=0.3234)
+- **Multiclass — Best Test F1-Macro:** `rf_multiclass` (val F1-macro=0.6131, test F1-macro=**0.4605**)
+
+> **Key observations:**
+> - All models achieve very high recall (>0.985) on both splits but suffer on precision due to imbalance
+> - LightGBM leads on val; RF generalises best to the shifted test distribution
+> - Multiclass test F1-macro drops sharply (0.46 max) vs val (0.66 max) — evidence of val/test distribution mismatch
+> - LR multiclass fails completely (F1-macro=0.12 val) — linear boundary insufficient for 10-class separation
+> - Shellcode and Worms: F1=0 on test for all models — both rare and distribution-shifted classes
+
+### 4.9 Outputs Saved
+
+- [x] `outputs/models/lr_binary.pkl` / `lr_multiclass.pkl`
+- [x] `outputs/models/rf_binary.pkl` / `rf_multiclass.pkl`
+- [x] `outputs/models/xgb_binary.pkl` / `xgb_multiclass.pkl`
+- [x] `outputs/models/lgbm_binary.pkl` / `lgbm_multiclass.pkl`
+- [x] `outputs/models/mlp_binary.pt` / `mlp_multiclass.pt` (state dicts)
+- [x] `outputs/models/baseline_results.json` (all val + test metrics, flat dict)
+- [x] `outputs/models/roc_curves.png`
+- [x] `outputs/models/f1_comparison.png`
+- [x] `outputs/models/cm_best_binary.png`
+- [x] `outputs/models/cm_best_multiclass.png`
+- [x] `outputs/models/rf_importance.png`
+- [x] `outputs/models/phase4_results.md`
 
 ---
 
