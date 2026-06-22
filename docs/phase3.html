@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phase 3 — Graph Construction · UNSW-NB15 GNN NIDS</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">UNSW-NB15 Research</div>
+    <div class="sidebar-title">GNN-Based NIDS</div>
+    <div class="sidebar-subtitle">Network Intrusion Detection</div>
+  </div>
+  <div class="nav-section-label">Pipeline Phases</div>
+  <ul class="nav-list">
+    <li><a href="index.html"  class="nav-link"><span class="nav-icon">🏠</span>Overview</a></li>
+    <li><a href="phase1.html" class="nav-link"><span class="nav-icon">📊</span>Phase 1 — EDA</a></li>
+    <li><a href="phase2.html" class="nav-link"><span class="nav-icon">🔧</span>Phase 2 — Preprocessing</a></li>
+    <li><a href="phase3.html" class="nav-link"><span class="nav-icon">🕸️</span>Phase 3 — Graph</a></li>
+    <li><a href="phase4.html" class="nav-link"><span class="nav-icon">⚡</span>Phase 4 — Baselines</a></li>
+    <li><a href="phase5.html" class="nav-link"><span class="nav-icon">🧠</span>Phase 5 — GNN Training</a></li>
+    <li><a href="phase6.html" class="nav-link"><span class="nav-icon">📈</span>Phase 6 — Evaluation</a></li>
+  </ul>
+  <div class="sidebar-footer">UNSW-NB15 &middot; June 2026</div>
+</aside>
+
+<main class="content">
+
+  <div class="page-header">
+    <div class="page-badge">Phase 3</div>
+    <h1>Graph Construction</h1>
+    <p class="subtitle">
+      Transforming the tabular network flow data into a heterogeneous IP-to-IP directed graph for
+      PyTorch Geometric. Each unique IP address becomes a node; each network flow becomes a directed edge.
+      The task is edge classification — predict whether each flow is normal or an attack.
+    </p>
+    <span class="status-badge status-complete">✓ Complete</span>
+  </div>
+
+  <!-- Graph Overview Stats -->
+  <div class="section">
+    <h2>🌐 Graph at a Glance</h2>
+    <div class="stat-grid">
+      <div class="stat-box accent">
+        <div class="stat-value">51</div>
+        <div class="stat-label">Total Nodes (IP addresses)</div>
+      </div>
+      <div class="stat-box accent">
+        <div class="stat-value">50</div>
+        <div class="stat-label">Known IP Nodes</div>
+      </div>
+      <div class="stat-box warning">
+        <div class="stat-value">1</div>
+        <div class="stat-label">UNK Node (unseen IPs)</div>
+      </div>
+      <div class="stat-box success">
+        <div class="stat-value">11</div>
+        <div class="stat-label">Node Feature Dimensions</div>
+      </div>
+      <div class="stat-box purple">
+        <div class="stat-value">37</div>
+        <div class="stat-label">Edge Feature Dimensions</div>
+      </div>
+      <div class="stat-box danger">
+        <div class="stat-value">10</div>
+        <div class="stat-label">Edge Label Classes</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Design Rationale -->
+  <div class="section">
+    <h2>🏗️ Graph Design</h2>
+
+    <div class="two-col">
+      <div>
+        <h3>Nodes — IP Addresses</h3>
+        <p>
+          Every unique IP address in the training set is mapped to a node index 0–49.
+          Any IP not seen in training is mapped to a single shared <strong>UNK node (index 50)</strong>.
+          This handles unseen IPs at inference time without graph structure changes.
+        </p>
+        <p>
+          <strong>Node features (11 dimensions)</strong> are computed per IP from the training set:
+          out-degree, in-degree, out-bytes (mean), in-bytes (mean), attack ratio, protocol entropy,
+          service entropy, mean TTL (src), mean TTL (dst), mean duration, and connection rate.
+          These aggregate the historical traffic profile of each endpoint.
+        </p>
+      </div>
+      <div>
+        <h3>Edges — Network Flows</h3>
+        <p>
+          Each network flow record becomes a directed edge from <code>srcip</code> node to <code>dstip</code>
+          node. Multi-edges are preserved (same IP pair can have many flows).
+        </p>
+        <p>
+          <strong>Edge features (37 dimensions)</strong> are exactly the 37 preprocessed flow features
+          from Phase 2 — all normalised and encoded. This is the primary signal used for classification.
+          The edge label is the 10-class attack category (or Normal), reduced to binary for the binary task.
+        </p>
+      </div>
+    </div>
+
+    <div class="callout callout-info">
+      <strong>Why edge classification?</strong>
+      Unlike node classification (where each node has one label), here each individual network flow
+      carries its own label. This naturally maps to edge classification: we classify each directed edge
+      (srcip → dstip) using both the edge's 37 flow features and the learned node embeddings of
+      its endpoint IPs. GNNs add value by allowing a flow's classification to be influenced by the
+      overall traffic pattern of the source and destination IPs.
+    </div>
+  </div>
+
+  <!-- Split Statistics -->
+  <div class="section">
+    <h2>📊 Per-Split Graph Statistics</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Train</th>
+            <th>Validation</th>
+            <th>Test</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Number of nodes</td><td>51</td><td>51</td><td>51</td></tr>
+          <tr><td>Number of edges (flows)</td><td>1,647,526</td><td>411,882</td><td>82,332</td></tr>
+          <tr><td>Unique src→dst pairs</td><td>311</td><td>286</td><td class="metric-bad">1</td></tr>
+          <tr><td>Graph density (edges/nodes²)</td><td>646.09</td><td>161.52</td><td>32.29</td></tr>
+          <tr><td>Weakly connected components</td><td>6</td><td>8</td><td>51</td></tr>
+          <tr><td>Mean out-degree</td><td>32,304</td><td>8,076</td><td>1,614</td></tr>
+          <tr><td>Max out-degree</td><td>154,082</td><td>38,804</td><td>82,332</td></tr>
+          <tr><td>Attack edge ratio</td><td>4.84%</td><td>4.84%</td><td class="metric-bad">55.06%</td></tr>
+          <tr><td>Normal edges</td><td>1,567,812</td><td>391,953</td><td>37,015</td></tr>
+          <tr><td>Attack edges</td><td>79,714</td><td>19,929</td><td>45,317</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-danger">
+      <strong>⚠️ Test set graph is fundamentally different from train/val.</strong>
+      The test split has only <strong>1 unique src→dst pair</strong> and <strong>51 weakly connected
+      components</strong> — meaning every test flow connects to the UNK node (index 50).
+      No real node-level neighbourhood structure exists on the test graph.
+      GNNs that rely heavily on neighbourhood aggregation will fail to leverage their key advantage
+      on this split, which explains the severe val→test performance drop in Phase 5.
+    </div>
+  </div>
+
+  <!-- Degree Distribution Image -->
+  <div class="section">
+    <h2>📈 Graph Structure Visualisations</h2>
+
+    <div class="img-grid img-grid-2">
+      <div class="img-card">
+        <img src="../outputs/graph/degree_distribution.png" alt="Node Degree Distribution" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Node Degree Distribution</div>
+          <div class="caption-text">
+            Log-scale histogram of in-degree and out-degree across 51 nodes. The distribution is
+            highly skewed — a small number of server IPs (e.g., DNS servers, HTTP servers) have
+            extremely high in-degree (receiving from many sources), while most client IPs have moderate
+            degree. This power-law-like distribution is characteristic of real internet traffic graphs.
+            The maximum out-degree of 154,082 edges belongs to the most active client IP in the training set.
+            High-degree nodes will have strong learned embeddings; low-degree nodes (and UNK) will have
+            weaker representations.
+          </div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/graph/edge_label_distribution.png" alt="Edge Label Distribution" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Edge Label Distribution (Train / Val / Test)</div>
+          <div class="caption-text">
+            Grouped bar chart showing the count of each of the 10 edge label classes across train,
+            validation, and test splits. <strong>Key observation:</strong> The class proportions
+            in train and val are nearly identical (4.84% attack each), but the test set has a
+            completely different profile — 55.06% attack. Within attack classes, Generic and Exploits
+            dominate in train/val, while the test set has a different per-class distribution.
+            This reinforces the challenge: models must generalise across both the class-level shift
+            and the graph-structural shift (UNK node).
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UNK Node Explanation -->
+  <div class="section">
+    <h2>❓ The UNK Node Problem</h2>
+
+    <div class="callout callout-warning">
+      <strong>What is the UNK node?</strong>
+      Node index 50 is a synthetic node representing all IP addresses not seen during training.
+      Because the test set uses different IP subnets from train/val (the test captures occurred on different
+      network segments), all test flows map to <code>srcip=UNK</code> or <code>dstip=UNK</code>.
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Scenario</th><th>Train / Val</th><th>Test</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Node neighbourhood available?</td>
+            <td class="metric-good">Yes — 50 known IPs, 311 unique pairs</td>
+            <td class="metric-bad">No — all flows → UNK node</td>
+          </tr>
+          <tr>
+            <td>GNN can aggregate neighbours?</td>
+            <td class="metric-good">Yes — meaningful IP history</td>
+            <td class="metric-bad">UNK has no meaningful embedding</td>
+          </tr>
+          <tr>
+            <td>Edge features still available?</td>
+            <td class="metric-good">Yes</td>
+            <td class="metric-good">Yes</td>
+          </tr>
+          <tr>
+            <td>Model type advantage</td>
+            <td>GNNs ≈ baselines</td>
+            <td class="metric-bad">Baselines &gt;&gt; GNNs (edge features only)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      This is an <strong>inductive GNN problem</strong> — the model must generalise to nodes not seen
+      at training time. The current architecture (full-batch transductive training) does not handle
+      this gracefully. Future work should explore inductive methods such as GraphSAINT, SEAL, or
+      edge-only models that bypass node embeddings entirely for test flows.
+    </p>
+  </div>
+
+  <!-- Saved Artifacts -->
+  <div class="section">
+    <h2>💾 Saved PyG Data Objects</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>File</th><th>Contents</th></tr></thead>
+        <tbody>
+          <tr><td><code>outputs/graph/graph_data_train.pt</code></td><td>PyG Data: 51 nodes, 1,647,526 edges, x (11), edge_attr (37), y (10-class)</td></tr>
+          <tr><td><code>outputs/graph/graph_data_val.pt</code></td><td>PyG Data: 51 nodes, 411,882 edges, x (11), edge_attr (37), y (10-class)</td></tr>
+          <tr><td><code>outputs/graph/graph_data_test.pt</code></td><td>PyG Data: 51 nodes, 82,332 edges, x (11), edge_attr (37), y (10-class)</td></tr>
+          <tr><td><code>outputs/graph/graph_stats.json</code></td><td>Full graph statistics (density, degree, WCC, attack ratio per split)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="findings-box">
+    <h3>🔑 Phase 3 — Key Findings</h3>
+    <ul>
+      <li><strong>Tiny node set (51 IPs)</strong> but massive edge set (1.6M train edges) — this is an edge-heavy, node-sparse graph, unusual for GNNs typically designed for node-sparse, edge-dense problems in the opposite ratio.</li>
+      <li><strong>Power-law degree distribution</strong> — a few gateway/server IPs dominate with 100k+ edges. GNN pooling will be dominated by these high-degree nodes.</li>
+      <li><strong>Test graph is structurally disconnected</strong> — 51 weakly connected components, 1 unique pair, all connecting to UNK. This is the root cause of GNN test failure.</li>
+      <li><strong>Node features aggregate IP history from training only</strong> — the UNK node's features are the mean of all known-IP features, which is a weak approximation for genuinely novel endpoints.</li>
+      <li><strong>All 37 edge features preserved</strong> as PyG <code>edge_attr</code> — classical baselines and GNNs use the same information, ensuring a fair comparison.</li>
+    </ul>
+  </div>
+
+</main>
+
+<script src="js/main.js"></script>
+</body>
+</html>

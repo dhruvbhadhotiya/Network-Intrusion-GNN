@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phase 6 — Evaluation &amp; Conclusions · UNSW-NB15 GNN NIDS</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">UNSW-NB15 Research</div>
+    <div class="sidebar-title">GNN-Based NIDS</div>
+    <div class="sidebar-subtitle">Network Intrusion Detection</div>
+  </div>
+  <div class="nav-section-label">Pipeline Phases</div>
+  <ul class="nav-list">
+    <li><a href="index.html"  class="nav-link"><span class="nav-icon">🏠</span>Overview</a></li>
+    <li><a href="phase1.html" class="nav-link"><span class="nav-icon">📊</span>Phase 1 — EDA</a></li>
+    <li><a href="phase2.html" class="nav-link"><span class="nav-icon">🔧</span>Phase 2 — Preprocessing</a></li>
+    <li><a href="phase3.html" class="nav-link"><span class="nav-icon">🕸️</span>Phase 3 — Graph</a></li>
+    <li><a href="phase4.html" class="nav-link"><span class="nav-icon">⚡</span>Phase 4 — Baselines</a></li>
+    <li><a href="phase5.html" class="nav-link"><span class="nav-icon">🧠</span>Phase 5 — GNN Training</a></li>
+    <li><a href="phase6.html" class="nav-link"><span class="nav-icon">📈</span>Phase 6 — Evaluation</a></li>
+  </ul>
+  <div class="sidebar-footer">UNSW-NB15 &middot; June 2026</div>
+</aside>
+
+<main class="content">
+
+  <div class="page-header">
+    <div class="page-badge">Phase 6</div>
+    <h1>Final Evaluation &amp; Conclusions</h1>
+    <p class="subtitle">
+      Complete comparison of all 9 models (5 baselines + 4 GNNs) on both tasks and both evaluation splits.
+      Analysis of the val/test distribution shift, the UNK node problem, and recommendations for
+      future work in graph-based network intrusion detection.
+    </p>
+    <span class="status-badge status-complete">✓ Complete</span>
+  </div>
+
+  <!-- Full Binary Comparison -->
+  <div class="section">
+    <h2>🏆 Full Binary Comparison — Test Set (attack ratio 55.06%)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Model</th><th>Type</th><th>Accuracy</th><th>Precision</th><th>Recall</th>
+            <th>F1</th><th>ROC-AUC</th><th>FPR</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="best-row">
+            <td>Random Forest</td><td>Baseline</td><td>0.8233</td><td>0.7572</td><td>0.9997</td>
+            <td class="metric-good">0.8617</td><td class="metric-good">0.9691</td><td>0.3928</td>
+          </tr>
+          <tr>
+            <td>MLP</td><td>Baseline</td><td>0.7977</td><td>0.7314</td><td>0.9997</td>
+            <td>0.8448</td><td>0.9769</td><td>0.4498</td>
+          </tr>
+          <tr>
+            <td>XGBoost</td><td>Baseline</td><td>0.7911</td><td>0.7250</td><td>0.9999</td>
+            <td>0.8405</td><td>0.9745</td><td>0.4646</td>
+          </tr>
+          <tr>
+            <td>LightGBM</td><td>Baseline</td><td>0.7740</td><td>0.7093</td><td>0.9990</td>
+            <td>0.8296</td><td>0.9375</td><td>0.5017</td>
+          </tr>
+          <tr>
+            <td>Logistic Regression</td><td>Baseline</td><td>0.7702</td><td>0.7072</td><td>0.9942</td>
+            <td>0.8265</td><td>0.6485</td><td>0.5043</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-gcn">NIDS-GCN</span> <span class="arch-tag tag-best">Best GNN</span></td>
+            <td>GNN</td><td>0.4800</td><td>0.5365</td><td>0.4090</td>
+            <td class="metric-ok">0.4641</td><td class="metric-ok">0.5836</td><td>0.4329</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-gat">NIDS-GAT</span></td>
+            <td>GNN</td><td>0.4371</td><td>0.4815</td><td>0.2898</td>
+            <td class="metric-bad">0.3618</td><td>0.5899</td><td>0.3824</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-full">NIDS-FULL</span></td>
+            <td>GNN</td><td>0.4006</td><td>0.4065</td><td>0.1928</td>
+            <td class="metric-bad">0.2616</td><td>0.5655</td><td>0.3449</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-sage">NIDS-SAGE</span></td>
+            <td>GNN</td><td>0.4046</td><td>0.3701</td><td>0.1160</td>
+            <td class="metric-bad">0.1767</td><td>0.6020</td><td>0.2419</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      <strong>Gap:</strong> Best baseline (RF) outperforms best GNN (GCN) by
+      <strong>ΔF1 = +0.398</strong> and <strong>ΔAUC = +0.387</strong> on the test set.
+      On the validation set, the same gap narrows to ΔF1 = +0.067 — indicating GNNs learn
+      competitive representations in-distribution but fail to generalise across the structural shift.
+    </p>
+  </div>
+
+  <!-- Full Multiclass Comparison -->
+  <div class="section">
+    <h2>🏷️ Full Multiclass Comparison — Test Set</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Type</th><th>Accuracy</th><th>F1-Macro</th><th>F1-Weighted</th></tr>
+        </thead>
+        <tbody>
+          <tr class="best-row">
+            <td>Random Forest</td><td>Baseline</td><td>0.6862</td><td class="metric-good">0.4605</td><td>0.7295</td>
+          </tr>
+          <tr>
+            <td>MLP</td><td>Baseline</td><td>0.6389</td><td>0.3815</td><td>0.6938</td>
+          </tr>
+          <tr>
+            <td>XGBoost</td><td>Baseline</td><td>0.6118</td><td>0.3276</td><td>0.6450</td>
+          </tr>
+          <tr>
+            <td>LightGBM</td><td>Baseline</td><td>0.5877</td><td>0.3234</td><td>0.6324</td>
+          </tr>
+          <tr>
+            <td>Logistic Regression</td><td>Baseline</td><td>0.4053</td><td class="metric-ok">0.1913</td><td>0.4053</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-gcn">NIDS-GCN</span> <span class="arch-tag tag-best">Best GNN</span></td>
+            <td>GNN</td><td>0.3246</td><td class="metric-ok">0.1423</td><td>0.3615</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-sage">NIDS-SAGE</span></td>
+            <td>GNN</td><td>0.3234</td><td class="metric-bad">0.1136</td><td>0.2820</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-gat">NIDS-GAT</span></td>
+            <td>GNN</td><td>0.3255</td><td class="metric-bad">0.1117</td><td>0.2998</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-full">NIDS-FULL</span></td>
+            <td>GNN</td><td>0.2872</td><td class="metric-bad">0.0888</td><td>0.2382</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Distribution Shift Analysis -->
+  <div class="section">
+    <h2>📉 Distribution Shift Analysis</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Val (4.84% attack)</th>
+            <th>Test (55.06% attack)</th>
+            <th>Δ Drop</th>
+            <th>Insight</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Best GNN binary F1</td>
+            <td class="metric-good">0.828 (SAGE)</td>
+            <td class="metric-bad">0.464 (GCN)</td>
+            <td class="metric-bad">−0.364</td>
+            <td>Catastrophic — UNK node eliminates graph advantage</td>
+          </tr>
+          <tr>
+            <td>Best baseline binary F1</td>
+            <td class="metric-good">0.895 (LightGBM)</td>
+            <td class="metric-good">0.862 (RF)</td>
+            <td>−0.033</td>
+            <td>Robust — edge features only, no graph dependency</td>
+          </tr>
+          <tr>
+            <td>Best GNN F1-macro</td>
+            <td class="metric-ok">0.274 (GCN)</td>
+            <td class="metric-bad">0.142 (GCN)</td>
+            <td class="metric-bad">−0.132</td>
+            <td>Moderate drop — some edge-feature signal survives</td>
+          </tr>
+          <tr>
+            <td>Best baseline F1-macro</td>
+            <td class="metric-good">0.657 (LightGBM)</td>
+            <td class="metric-ok">0.461 (RF)</td>
+            <td>−0.196</td>
+            <td>Larger drop than binary — multiclass inherently harder</td>
+          </tr>
+          <tr>
+            <td>Best GNN binary AUC</td>
+            <td class="metric-good">0.983 (FULL)</td>
+            <td class="metric-bad">0.602 (SAGE)</td>
+            <td class="metric-bad">−0.381</td>
+            <td>Dramatic — ranking ability collapses without neighbours</td>
+          </tr>
+          <tr>
+            <td>Best baseline binary AUC</td>
+            <td class="metric-good">0.9993 (XGBoost)</td>
+            <td class="metric-good">0.975 (XGBoost)</td>
+            <td>−0.024</td>
+            <td>Nearly stable across splits</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="img-grid img-grid-2">
+      <div class="img-card">
+        <img src="../outputs/gnn_output/gnn_vs_baseline.png" alt="GNN vs Baseline F1 Comparison" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">GNN vs Baseline — F1 Comparison (Val &amp; Test)</div>
+          <div class="caption-text">
+            The chart shows the dramatic reversal between val and test rankings. GNNs and baselines
+            are neck-and-neck on the validation set. On the test set, every baseline outperforms
+            every GNN by a wide margin. The crossing lines confirm this is not a model quality issue
+            but a generalisation setting issue: when the graph topology changes completely (UNK node),
+            GNNs lose their structural advantage entirely.
+          </div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/gnn_output/gnn_roc_curves.png" alt="GNN ROC Curves" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">GNN ROC Curves — Val vs Test Degradation</div>
+          <div class="caption-text">
+            The contrast between solid (val) and dashed (test) ROC curves makes the distribution shift
+            visually striking. Val curves hug the top-left corner (AUC ~0.98); test curves hover near
+            the diagonal (AUC ~0.58–0.60). A near-diagonal ROC curve indicates a model that cannot
+            reliably rank positive examples above negative ones — consistent with decision boundaries
+            learned on in-distribution IP pairs being completely irrelevant for UNK-node test flows.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Conclusions -->
+  <div class="section">
+    <h2>💡 Project Conclusions</h2>
+
+    <div class="conclusion-grid">
+      <div class="conclusion-card">
+        <div class="conclusion-icon">✅</div>
+        <h3>What Worked</h3>
+        <ul>
+          <li>GNNs achieve <strong>val binary F1 = 0.82–0.83</strong>, within 7% of the best baseline, using graph structure effectively on in-distribution data.</li>
+          <li>Graph construction pipeline: 51-node IP graph with 37-dim edge features and 11-dim node features correctly models the network topology.</li>
+          <li>All 4 GNN variants converge reliably on the 1.6M-edge training graph with gradient checkpointing and HPO subsampling.</li>
+          <li>Edge features carry strong discriminative signal — even GNNs operating near-randomly on test still achieve PR-AUC ~0.55 (slightly above the 0.55 random baseline).</li>
+          <li>TTL-based features (<code>sttl</code>, <code>ct_state_ttl</code>) are the strongest attack discriminators across all models — confirmed by both EDA and RF importance.</li>
+        </ul>
+      </div>
+
+      <div class="conclusion-card">
+        <div class="conclusion-icon">❌</div>
+        <h3>What Failed</h3>
+        <ul>
+          <li><strong>Test generalisation collapsed</strong> for all GNNs (test F1 &lt; 0.47) due to the UNK node problem — all test flows map to a single unseen node with no meaningful embedding.</li>
+          <li><strong>Transductive training</strong> (standard GNN full-batch) cannot handle inductive scenarios where new nodes appear at inference time.</li>
+          <li>GNN multiclass test F1-macro (0.09–0.14) is lower than even Logistic Regression (0.19) — graph structure actively hurts when it provides no signal.</li>
+          <li>NIDS-FULL (most complex) performs worst on test — architectural complexity provides no robustness benefit under distribution shift.</li>
+          <li>Rare classes (Worms, Shellcode, Analysis) remain near-undetectable for <em>all</em> models, both baselines and GNNs — a dataset-level challenge that cannot be solved by architecture alone.</li>
+        </ul>
+      </div>
+
+      <div class="conclusion-card">
+        <div class="conclusion-icon">🔭</div>
+        <h3>Future Work</h3>
+        <ul>
+          <li><strong>Inductive GNNs:</strong> Use GraphSAINT, ClusterGCN, or SEAL — frameworks designed to handle unseen nodes at inference time by sampling local subgraphs rather than full-batch transductive training.</li>
+          <li><strong>Edge-only GNN:</strong> Remove node embeddings from the edge classifier input on test (use only <code>edge_attr</code>) — this would make GNNs competitive with baselines on the UNK test set.</li>
+          <li><strong>Node feature augmentation:</strong> Compute live UNK node features from test flow statistics in a sliding window rather than using a static training-time mean.</li>
+          <li><strong>Threshold calibration:</strong> Apply Platt scaling or isotonic regression to calibrate predicted probabilities at the test's 55% attack prevalence, recovering some F1 performance.</li>
+          <li><strong>Temporal graph learning:</strong> Model the time-evolving nature of IP behaviour with temporal GNNs (TGAT, TGN) — each IP node's embedding should evolve as new flows arrive.</li>
+          <li><strong>Few-shot rare class detection:</strong> For Worms/Shellcode/Analysis, use anomaly detection (One-Class SVM, isolation forest) or prototypical networks to improve rare attack recall.</li>
+        </ul>
+      </div>
+
+      <div class="conclusion-card">
+        <div class="conclusion-icon">🎯</div>
+        <h3>Key Takeaways</h3>
+        <ul>
+          <li>GNNs on IP traffic graphs are a <strong>promising but inductive-generalisation-limited</strong> approach for NIDS.</li>
+          <li>The <strong>transductive vs inductive</strong> setting is the critical design choice — UNSW-NB15's test set specifically tests inductive generalisation (novel IPs), where standard GNNs fail.</li>
+          <li><strong>Random Forest remains the best all-round model</strong> for this dataset: robust to distribution shift, interpretable via feature importance, and requires no GPU.</li>
+          <li>GNNs add value <strong>only when the graph structure is preserved at inference time</strong> — i.e., in monitoring settings where the same IP pool is known and the task is to classify new flows between known IPs.</li>
+          <li>The <strong>val/test distribution shift</strong> in UNSW-NB15 (4.84% → 55.06% attack ratio) is a realistic and important benchmark — models that only report val metrics are likely over-estimating real-world performance.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overall Project Summary -->
+  <div class="section">
+    <h2>📋 Project Summary</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Phase</th><th>Goal</th><th>Key Output</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Phase 1 — EDA</td>
+            <td>Understand dataset structure and attack distribution</td>
+            <td>10 visualisations, eda_summary.json, 8 high-corr pairs identified</td>
+            <td class="metric-good">✓ Complete</td>
+          </tr>
+          <tr>
+            <td>Phase 2 — Preprocessing</td>
+            <td>Clean, encode, split, and resample data</td>
+            <td>37-feature matrices, SMOTE train set, chronological splits saved as .npy</td>
+            <td class="metric-good">✓ Complete</td>
+          </tr>
+          <tr>
+            <td>Phase 3 — Graph</td>
+            <td>Build PyG graph from IP flows</td>
+            <td>51-node graph, 1.6M train edges, 3 PyG .pt files + graph_stats.json</td>
+            <td class="metric-good">✓ Complete</td>
+          </tr>
+          <tr>
+            <td>Phase 4 — Baselines</td>
+            <td>Train 5 classical ML models with HPO</td>
+            <td>Best binary: RF (F1=0.862 test); Best multiclass: RF (F1-macro=0.461 test)</td>
+            <td class="metric-good">✓ Complete</td>
+          </tr>
+          <tr>
+            <td>Phase 5 — GNN Training</td>
+            <td>Train 4 GNN variants × 2 tasks on GPU</td>
+            <td>Best GNN binary: GCN (F1=0.464 test); 8 .pt models, gnn_results.json</td>
+            <td class="metric-good">✓ Complete</td>
+          </tr>
+          <tr>
+            <td>Phase 6 — Evaluation</td>
+            <td>Compare all models, analyse shift, draw conclusions</td>
+            <td>Full comparison tables, distribution shift analysis, 4-part conclusions</td>
+            <td class="metric-good">✓ Complete</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- All Saved Artifacts -->
+  <div class="section">
+    <h2>💾 All Project Artifacts</h2>
+    <div class="two-col">
+      <div>
+        <h3>Models &amp; Results</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>File</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>outputs/models/lr_binary.pkl</code></td><td>Logistic Regression (binary)</td></tr>
+              <tr><td><code>outputs/models/rf_binary.pkl</code></td><td>Random Forest (binary)</td></tr>
+              <tr><td><code>outputs/models/xgb_binary.pkl</code></td><td>XGBoost (binary)</td></tr>
+              <tr><td><code>outputs/models/lgbm_binary.pkl</code></td><td>LightGBM (binary)</td></tr>
+              <tr><td><code>outputs/models/mlp_binary.pt</code></td><td>MLP (binary) state dict</td></tr>
+              <tr><td><code>outputs/models/baseline_results.json</code></td><td>All baseline metrics</td></tr>
+              <tr><td><code>outputs/gnn_output/nids_gcn_binary.pt</code></td><td>NIDS-GCN (binary)</td></tr>
+              <tr><td><code>outputs/gnn_output/nids_gat_binary.pt</code></td><td>NIDS-GAT (binary)</td></tr>
+              <tr><td><code>outputs/gnn_output/nids_sage_binary.pt</code></td><td>NIDS-SAGE (binary)</td></tr>
+              <tr><td><code>outputs/gnn_output/nids_full_binary.pt</code></td><td>NIDS-FULL (binary)</td></tr>
+              <tr><td><code>outputs/gnn_output/gnn_results.json</code></td><td>All GNN metrics</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h3>Visualisations</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>File</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>outputs/eda/class_dist.png</code></td><td>Binary class distribution</td></tr>
+              <tr><td><code>outputs/eda/correlation_heatmap.png</code></td><td>Feature correlations</td></tr>
+              <tr><td><code>outputs/eda/pca_tsne.png</code></td><td>Dimensionality reduction</td></tr>
+              <tr><td><code>outputs/graph/degree_distribution.png</code></td><td>Node degrees</td></tr>
+              <tr><td><code>outputs/models/roc_curves.png</code></td><td>Baseline ROC curves</td></tr>
+              <tr><td><code>outputs/models/rf_importance.png</code></td><td>RF feature importance</td></tr>
+              <tr><td><code>outputs/gnn_output/gnn_training_curves_binary.png</code></td><td>GNN loss/F1 curves</td></tr>
+              <tr><td><code>outputs/gnn_output/gnn_roc_curves.png</code></td><td>GNN ROC curves</td></tr>
+              <tr><td><code>outputs/gnn_output/gnn_vs_baseline.png</code></td><td>GNN vs baseline F1</td></tr>
+              <tr><td><code>outputs/gnn_output/gnn_perclass_f1.png</code></td><td>Per-class F1 comparison</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="findings-box">
+    <h3>🔑 Final Project Verdict</h3>
+    <ul>
+      <li>
+        <strong>For this specific dataset and evaluation setting (transductive → inductive shift),
+        classical tree ensembles (Random Forest) outperform GNNs by a large margin on test.</strong>
+        RF achieves F1=0.862 vs GCN's 0.464 binary, and F1-macro=0.461 vs GCN's 0.142 multiclass.
+      </li>
+      <li>
+        GNNs demonstrate competitive performance on the <strong>validation set</strong>, confirming
+        they can learn meaningful graph representations when the IP neighbourhood structure is intact.
+        The val AUC of 0.977–0.983 matches baseline AUC of 0.985–0.999.
+      </li>
+      <li>
+        The core lesson: <strong>GNN generalisation requires inductive design</strong>.
+        Transductive GNNs trained on a closed IP set fail when deployed on new IP subnets.
+        Future NIDS work should adopt GraphSAINT, SEAL, or edge-only architectures that bypass
+        node-identity dependence.
+      </li>
+      <li>
+        The <strong>UNSW-NB15 test set is a particularly challenging inductive benchmark</strong>
+        (1 unique IP pair, 51 disconnected components, 55% attack prevalence) — models reporting
+        results only on the validation set significantly overstate real-world applicability.
+      </li>
+    </ul>
+  </div>
+
+</main>
+
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phase 1 — EDA · UNSW-NB15 GNN NIDS</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">UNSW-NB15 Research</div>
+    <div class="sidebar-title">GNN-Based NIDS</div>
+    <div class="sidebar-subtitle">Network Intrusion Detection</div>
+  </div>
+  <div class="nav-section-label">Pipeline Phases</div>
+  <ul class="nav-list">
+    <li><a href="index.html"  class="nav-link"><span class="nav-icon">🏠</span>Overview</a></li>
+    <li><a href="phase1.html" class="nav-link"><span class="nav-icon">📊</span>Phase 1 — EDA</a></li>
+    <li><a href="phase2.html" class="nav-link"><span class="nav-icon">🔧</span>Phase 2 — Preprocessing</a></li>
+    <li><a href="phase3.html" class="nav-link"><span class="nav-icon">🕸️</span>Phase 3 — Graph</a></li>
+    <li><a href="phase4.html" class="nav-link"><span class="nav-icon">⚡</span>Phase 4 — Baselines</a></li>
+    <li><a href="phase5.html" class="nav-link"><span class="nav-icon">🧠</span>Phase 5 — GNN Training</a></li>
+    <li><a href="phase6.html" class="nav-link"><span class="nav-icon">📈</span>Phase 6 — Evaluation</a></li>
+  </ul>
+  <div class="sidebar-footer">UNSW-NB15 &middot; June 2026</div>
+</aside>
+
+<main class="content">
+
+  <div class="page-header">
+    <div class="page-badge">Phase 1</div>
+    <h1>Exploratory Data Analysis</h1>
+    <p class="subtitle">
+      Statistical profiling of the UNSW-NB15 network flow dataset: 2.54 million records captured over
+      28 days across 4 packet capture files. We examine class distributions, feature statistics,
+      correlations, dimensionality, and attack category breakdown.
+    </p>
+    <span class="status-badge status-complete">✓ Complete</span>
+  </div>
+
+  <!-- Dataset Overview -->
+  <div class="section">
+    <h2>📋 Dataset Overview</h2>
+
+    <div class="stat-grid">
+      <div class="stat-box accent">
+        <div class="stat-value">2,540,047</div>
+        <div class="stat-label">Total Records</div>
+      </div>
+      <div class="stat-box danger">
+        <div class="stat-value">321,283</div>
+        <div class="stat-label">Attack Flows (12.65%)</div>
+      </div>
+      <div class="stat-box success">
+        <div class="stat-value">2,218,764</div>
+        <div class="stat-label">Normal Flows (87.35%)</div>
+      </div>
+      <div class="stat-box warning">
+        <div class="stat-value">6.91×</div>
+        <div class="stat-label">Imbalance Ratio</div>
+      </div>
+      <div class="stat-box accent">
+        <div class="stat-value">49</div>
+        <div class="stat-label">Raw Features</div>
+      </div>
+      <div class="stat-box purple">
+        <div class="stat-value">28 days</div>
+        <div class="stat-label">Jan 22 – Feb 18, 2015</div>
+      </div>
+    </div>
+
+    <h3>Per-File Breakdown</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>File</th><th>Total Records</th><th>Normal</th><th>Attack</th><th>Attack %</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>UNSW-NB15_1.csv</td><td>700,001</td><td>677,786</td><td>22,215</td><td>3.17%</td></tr>
+          <tr><td>UNSW-NB15_2.csv</td><td>700,001</td><td>647,252</td><td>52,749</td><td>7.54%</td></tr>
+          <tr><td>UNSW-NB15_3.csv</td><td>700,001</td><td>542,576</td><td>157,425</td><td>22.49%</td></tr>
+          <tr><td>UNSW-NB15_4.csv</td><td>440,044</td><td>351,150</td><td>88,894</td><td>20.20%</td></tr>
+          <tr class="best-row"><td><strong>Total</strong></td><td><strong>2,540,047</strong></td><td><strong>2,218,764</strong></td><td><strong>321,283</strong></td><td><strong>12.65%</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-warning">
+      <strong>Attack density varies across files.</strong>
+      File 1 has only 3.17% attacks while Files 3 and 4 exceed 20%. This temporal variation reflects different
+      capture sessions and is a source of the train/test distribution shift observed later in the project.
+    </div>
+  </div>
+
+  <!-- Attack Category Distribution -->
+  <div class="section">
+    <h2>🎯 Attack Category Distribution</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Category</th><th>Count</th><th>% of Dataset</th><th>% of Attacks</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="label-pill pill-normal">Normal</span></td><td>2,218,764</td><td>87.35%</td><td>—</td></tr>
+          <tr><td>Generic</td><td>215,481</td><td>8.48%</td><td>67.08%</td></tr>
+          <tr><td>Exploits</td><td>44,525</td><td>1.75%</td><td>13.86%</td></tr>
+          <tr><td>Fuzzers</td><td>24,246</td><td>0.95%</td><td>7.55%</td></tr>
+          <tr><td>DoS</td><td>16,353</td><td>0.64%</td><td>5.09%</td></tr>
+          <tr><td>Reconnaissance</td><td>13,987</td><td>0.55%</td><td>4.35%</td></tr>
+          <tr><td>Analysis</td><td>2,677</td><td>0.11%</td><td>0.83%</td></tr>
+          <tr><td>Backdoor</td><td>2,329</td><td>0.09%</td><td>0.72%</td></tr>
+          <tr><td>Shellcode</td><td>1,511</td><td>0.06%</td><td>0.47%</td></tr>
+          <tr><td>Worms</td><td>174</td><td>0.007%</td><td>0.05%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="img-grid img-grid-2">
+      <div class="img-card">
+        <img src="../outputs/eda/class_dist.png" alt="Binary Class Distribution" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Binary Class Distribution</div>
+          <div class="caption-text">
+            Pie/bar chart showing the stark 87.35% normal vs 12.65% attack split across the full dataset.
+            This 6.91× imbalance ratio necessitates SMOTE resampling before model training to prevent
+            classifiers from defaulting to a "predict normal" strategy.
+          </div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/eda/per_file_distribution.png" alt="Per-File Attack Distribution" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Per-File Attack Distribution</div>
+          <div class="caption-text">
+            Stacked bar chart comparing normal vs attack counts across all four capture files.
+            Attack density grows from 3.2% (File 1) to over 20% (Files 3–4), indicating temporal
+            non-stationarity in the capture campaign — a key reason for val/test distribution shift.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Missing Values -->
+  <div class="section">
+    <h2>🔍 Null &amp; Missing Value Analysis</h2>
+    <p>
+      All 49 raw features were scanned for nulls. Only three features had missing values — both HTTP-related
+      fields that are structurally empty for non-HTTP flows.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Null Count</th><th>% Missing</th><th>Treatment</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>ct_flw_http_mthd</code></td><td>1,348,145</td><td>53.1%</td><td>Fill with 0 (no HTTP method)</td></tr>
+          <tr><td><code>is_ftp_login</code></td><td>1,429,879</td><td>56.3%</td><td>Fill with 0 (not FTP)</td></tr>
+          <tr><td>All other features</td><td>0</td><td>0%</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout callout-info">
+      <strong>Structural missingness, not random.</strong>
+      Both features are protocol-specific — <code>ct_flw_http_mthd</code> applies only to HTTP flows and
+      <code>is_ftp_login</code> only to FTP. Zero-filling is semantically correct (absent field = not applicable).
+      Neither feature made the final 37-feature selection after correlation and importance filtering.
+    </div>
+  </div>
+
+  <!-- Temporal Analysis -->
+  <div class="section">
+    <h2>⏱️ Temporal Traffic Analysis</h2>
+    <div class="img-grid img-grid-1">
+      <div class="img-card">
+        <img src="../outputs/eda/temporal_density.png" alt="Temporal Traffic Density" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Temporal Traffic Density</div>
+          <div class="caption-text">
+            Flow density over the 28-day capture window (Jan 22 – Feb 18, 2015). Clear periodic patterns
+            reflect business-hours traffic cycles. Attack traffic shows bursty spikes rather than uniform
+            distribution, consistent with scripted attack campaigns. The temporal non-uniformity motivates
+            chronological train/val/test splitting to prevent leakage.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature Analysis -->
+  <div class="section">
+    <h2>📈 Feature Distribution Analysis</h2>
+
+    <div class="img-grid img-grid-1">
+      <div class="img-card">
+        <img src="../outputs/eda/feature_histograms.png" alt="Feature Histograms" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Feature Histograms (37 Numeric Features)</div>
+          <div class="caption-text">
+            Distribution plots for all 37 numeric features. Most traffic volume features (<code>sbytes</code>,
+            <code>dbytes</code>, <code>Sload</code>, <code>Dload</code>) are heavily right-skewed with
+            long tails driven by high-volume flows. TTL features (<code>sttl</code>, <code>dttl</code>)
+            show discrete clusters corresponding to OS-specific defaults (64, 128, 255), which are strong
+            attack discriminators. Timing features like <code>dur</code> and <code>Sintpkt</code> span
+            multiple orders of magnitude, requiring log-normalization.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="img-grid img-grid-2">
+      <div class="img-card">
+        <img src="../outputs/eda/boxplots_by_category.png" alt="Feature Boxplots by Attack Category" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Feature Boxplots by Attack Category</div>
+          <div class="caption-text">
+            Side-by-side boxplots of key features grouped by attack category. Generic attacks show
+            distinctly elevated <code>Dpkts</code>/<code>dloss</code>. DoS attacks have very high
+            <code>Sload</code>/<code>sbytes</code>. Normal flows cluster tightly on most features,
+            confirming that attack categories have characteristic signatures that tree models can exploit.
+          </div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/eda/attack_cat_heatmaps.png" alt="Attack Category Feature Heatmap" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Attack Category Feature Heatmap</div>
+          <div class="caption-text">
+            Median feature values per attack class, normalised to [0,1]. Strong per-class patterns
+            are visible: Worms cluster on connection-tracking features; Shellcode has elevated
+            <code>res_bdy_len</code>; Reconnaissance shows distinctive TTL behaviour. This confirms
+            that multiclass separation is learnable but difficult for rare categories like Worms (174 samples).
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Correlation Analysis -->
+  <div class="section">
+    <h2>🔗 Feature Correlation Analysis</h2>
+
+    <div class="img-grid img-grid-1">
+      <div class="img-card">
+        <img src="../outputs/eda/correlation_heatmap.png" alt="Feature Correlation Heatmap" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Pearson Correlation Heatmap (37 Numeric Features)</div>
+          <div class="caption-text">
+            Heatmap of absolute Pearson correlations between all 37 features. Eight feature pairs
+            exceed r = 0.95 (shown below). The dominant block of high correlation involves packet/byte
+            count features — <code>Dpkts</code>, <code>dloss</code>, <code>dbytes</code> — which carry
+            redundant information. These were candidates for removal during feature selection but retained
+            because individual features still carry unique signal in tree-based models.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>High-Correlation Feature Pairs (r &gt; 0.95)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Feature A</th><th>Feature B</th><th>Pearson r</th><th>Decision</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>dwin</code></td><td><code>swin</code></td><td>0.9973</td><td>Both retained (different direction)</td></tr>
+          <tr><td><code>Dpkts</code></td><td><code>dloss</code></td><td>0.9910</td><td>Both retained</td></tr>
+          <tr><td><code>dloss</code></td><td><code>dbytes</code></td><td>0.9908</td><td>Both retained</td></tr>
+          <tr><td><code>Dpkts</code></td><td><code>dbytes</code></td><td>0.9682</td><td>Both retained</td></tr>
+          <tr><td><code>sloss</code></td><td><code>sbytes</code></td><td>0.9629</td><td>Both retained</td></tr>
+          <tr><td><code>ct_src_dport_ltm</code></td><td><code>ct_dst_ltm</code></td><td>0.9599</td><td>Both retained</td></tr>
+          <tr><td><code>ct_srv_dst</code></td><td><code>ct_srv_src</code></td><td>0.9572</td><td>Both retained</td></tr>
+          <tr><td><code>ct_dst_src_ltm</code></td><td><code>ct_srv_dst</code></td><td>0.9509</td><td>Both retained</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Dimensionality Reduction -->
+  <div class="section">
+    <h2>🗺️ Dimensionality Reduction</h2>
+    <div class="img-grid img-grid-1">
+      <div class="img-card">
+        <img src="../outputs/eda/pca_tsne.png" alt="PCA and t-SNE Visualisation" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">PCA (top) and t-SNE (bottom) Visualisations — Coloured by Class</div>
+          <div class="caption-text">
+            <strong>PCA:</strong> 99.98% of variance is explained by the first 2 components, indicating
+            the feature space has very strong linear structure. Normal and attack flows form partially
+            separable clusters even in 2D. <strong>t-SNE:</strong> Non-linear projection reveals tighter,
+            more distinct attack clusters — Exploits and Generic separate well from Normal; Worms and
+            Shellcode remain embedded within the normal cloud (explaining their low test F1 for all models).
+            The 99.98% PCA variance ratio confirms that a relatively low-dimensional representation
+            captures nearly all signal, supporting aggressive feature selection.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Categorical Features -->
+  <div class="section">
+    <h2>🏷️ Categorical Feature Analysis</h2>
+    <div class="img-grid img-grid-1">
+      <div class="img-card">
+        <img src="../outputs/eda/categorical_features.png" alt="Categorical Feature Distributions" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Categorical Feature Distributions (proto, service, state)</div>
+          <div class="caption-text">
+            Bar charts of the three categorical features. <code>proto</code> (135 unique values) is dominated
+            by TCP and UDP, with many rare protocols appearing almost exclusively in attack traffic.
+            <code>service</code> (13 values) includes HTTP, DNS, FTP, and an <code>"-"</code> category
+            for unlabelled services. <code>state</code> (16 values) encodes TCP state machine transitions —
+            states like <code>FIN</code> and <code>CON</code> dominate normal traffic, while <code>INT</code>
+            and <code>REQ</code> appear disproportionately in attack flows. All three are ordinal-encoded
+            for model training.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Unique Values</th><th>Encoding Strategy</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>proto</code></td><td>135</td><td>Ordinal (frequency-ordered)</td><td>TCP, UDP dominate; many attack-specific protocols</td></tr>
+          <tr><td><code>service</code></td><td>13</td><td>Ordinal</td><td>Includes "-" for non-classified services</td></tr>
+          <tr><td><code>state</code></td><td>16</td><td>Ordinal</td><td>TCP state machine states — strong discriminator</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Feature Importance -->
+  <div class="section">
+    <h2>⭐ Feature Importance (Random Forest Probe)</h2>
+    <div class="img-grid img-grid-1">
+      <div class="img-card">
+        <img src="../outputs/eda/rf_feature_importance.png" alt="RF Feature Importance" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Top-20 Feature Importances from a Quick Random Forest Probe</div>
+          <div class="caption-text">
+            A shallow RF (100 trees, max_depth=10) trained on a 50k subsample reveals the most
+            discriminative features. <strong>Top features:</strong> <code>sttl</code> (source TTL),
+            <code>ct_state_ttl</code> (state/TTL combination), <code>Dload</code> (destination load),
+            <code>dbytes</code>, <code>Dintpkt</code> (destination inter-packet time), and <code>dttl</code>
+            (destination TTL). TTL-based features rank highest because attackers often use non-standard TTL
+            values or tunnel traffic that alters TTL counts — a reliable OS fingerprint.
+            Connection tracking features (<code>ct_dst_src_ltm</code>, <code>ct_dst_sport_ltm</code>)
+            capture session-level behaviour that helps distinguish scanning from legitimate activity.
+            The top 20 features are used as the feature selection shortlist for preprocessing.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Findings -->
+  <div class="findings-box">
+    <h3>🔑 Phase 1 — Key Findings</h3>
+    <ul>
+      <li><strong>Severe class imbalance:</strong> 87.35% normal vs 12.65% attack (6.91× ratio) — SMOTE resampling required.</li>
+      <li><strong>Temporal non-stationarity:</strong> Attack density rises from 3.2% (File 1) to 22.5% (File 3), introducing val/test distribution shift.</li>
+      <li><strong>99.98% PCA variance</strong> in 2 components — highly structured, low-intrinsic-dimensionality feature space.</li>
+      <li><strong>8 strongly correlated pairs</strong> (r &gt; 0.95) — primarily packet/byte count features; all retained for tree-based models.</li>
+      <li><strong>Top discriminators:</strong> <code>sttl</code>, <code>ct_state_ttl</code>, <code>Dload</code>, <code>dttl</code> — TTL-based features fingerprint OS/attacker behaviour effectively.</li>
+      <li><strong>Rare attack classes:</strong> Worms (174), Shellcode (1,511), Analysis (2,677) — will likely yield F1≈0 for all models due to extreme scarcity.</li>
+      <li><strong>No zero-variance features</strong> found — all 37 retained features carry signal.</li>
+    </ul>
+  </div>
+
+</main>
+
+<script src="js/main.js"></script>
+</body>
+</html>

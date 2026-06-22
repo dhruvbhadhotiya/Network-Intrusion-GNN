@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phase 4 — Baseline Models · UNSW-NB15 GNN NIDS</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">UNSW-NB15 Research</div>
+    <div class="sidebar-title">GNN-Based NIDS</div>
+    <div class="sidebar-subtitle">Network Intrusion Detection</div>
+  </div>
+  <div class="nav-section-label">Pipeline Phases</div>
+  <ul class="nav-list">
+    <li><a href="index.html"  class="nav-link"><span class="nav-icon">🏠</span>Overview</a></li>
+    <li><a href="phase1.html" class="nav-link"><span class="nav-icon">📊</span>Phase 1 — EDA</a></li>
+    <li><a href="phase2.html" class="nav-link"><span class="nav-icon">🔧</span>Phase 2 — Preprocessing</a></li>
+    <li><a href="phase3.html" class="nav-link"><span class="nav-icon">🕸️</span>Phase 3 — Graph</a></li>
+    <li><a href="phase4.html" class="nav-link"><span class="nav-icon">⚡</span>Phase 4 — Baselines</a></li>
+    <li><a href="phase5.html" class="nav-link"><span class="nav-icon">🧠</span>Phase 5 — GNN Training</a></li>
+    <li><a href="phase6.html" class="nav-link"><span class="nav-icon">📈</span>Phase 6 — Evaluation</a></li>
+  </ul>
+  <div class="sidebar-footer">UNSW-NB15 &middot; June 2026</div>
+</aside>
+
+<main class="content">
+
+  <div class="page-header">
+    <div class="page-badge">Phase 4</div>
+    <h1>Baseline Models</h1>
+    <p class="subtitle">
+      Five classical ML models trained on the 37 tabular features with RandomizedSearchCV hyperparameter
+      optimisation. Results serve as the target benchmark that GNN variants must beat or match.
+      All models trained on Kaggle (GPU T4 × 2, 30 GB RAM).
+    </p>
+    <span class="status-badge status-complete">✓ Complete — 5 models × 2 tasks</span>
+  </div>
+
+  <!-- Models Summary -->
+  <div class="section">
+    <h2>🤖 Models &amp; HPO Strategy</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Search Method</th><th>Iterations</th><th>CV Folds</th><th>Subsample</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Logistic Regression</td><td>RandomizedSearchCV</td><td>8</td><td>3</td><td>200k</td></tr>
+          <tr><td>Random Forest</td><td>RandomizedSearchCV</td><td>8</td><td>3</td><td>200k</td></tr>
+          <tr><td>XGBoost</td><td>RandomizedSearchCV + early stopping</td><td>10</td><td>3</td><td>200k</td></tr>
+          <tr><td>LightGBM</td><td>RandomizedSearchCV + early stopping</td><td>10</td><td>3</td><td>200k</td></tr>
+          <tr><td>MLP (PyTorch)</td><td>Manual architecture search (4 configs)</td><td>—</td><td>—</td><td>200k</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout callout-info">
+      <strong>HPO on 200k stratified subsample.</strong>
+      Full training set (~3.1M resampled for binary) is too large for cross-validated search.
+      HPO uses a 200k stratified subsample; final model is then refit on the complete resampled training data.
+      XGBoost and LightGBM use <code>early_stopping_rounds=50</code> on the validation set.
+    </div>
+  </div>
+
+  <!-- Binary Val Results -->
+  <div class="section">
+    <h2>🎯 Binary Detection — Validation Set (attack ratio 4.84%)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th><th>ROC-AUC</th><th>FPR</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Logistic Regression</td><td>0.9745</td><td>0.6559</td><td>0.9931</td><td>0.7901</td><td>0.9853</td><td>0.0265</td></tr>
+          <tr><td>Random Forest</td><td>0.9866</td><td>0.7841</td><td>0.9979</td><td>0.8782</td><td>0.9991</td><td>0.0140</td></tr>
+          <tr><td>XGBoost</td><td>0.9884</td><td>0.8112</td><td>0.9910</td><td>0.8922</td><td>0.9993</td><td>0.0117</td></tr>
+          <tr class="best-row"><td>LightGBM</td><td>0.9889</td><td>0.8204</td><td>0.9853</td><td>0.8953</td><td>0.9989</td><td>0.0110</td></tr>
+          <tr><td>MLP</td><td>0.9860</td><td>0.7757</td><td>0.9997</td><td>0.8736</td><td>0.9989</td><td>0.0147</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>🎯 Binary Detection — Test Set (attack ratio 55.06%)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th><th>ROC-AUC</th><th>FPR</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Logistic Regression</td><td>0.7702</td><td>0.7072</td><td>0.9942</td><td>0.8265</td><td>0.6485</td><td>0.5043</td></tr>
+          <tr class="best-row"><td>Random Forest</td><td>0.8233</td><td>0.7572</td><td>0.9997</td><td>0.8617</td><td>0.9691</td><td>0.3928</td></tr>
+          <tr><td>XGBoost</td><td>0.7911</td><td>0.7250</td><td>0.9999</td><td>0.8405</td><td>0.9745</td><td>0.4646</td></tr>
+          <tr><td>LightGBM</td><td>0.7740</td><td>0.7093</td><td>0.9990</td><td>0.8296</td><td>0.9375</td><td>0.5017</td></tr>
+          <tr><td>MLP</td><td>0.7977</td><td>0.7314</td><td>0.9997</td><td>0.8448</td><td>0.9769</td><td>0.4498</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="img-grid img-grid-2">
+      <div class="img-card">
+        <img src="../outputs/models/roc_curves.png" alt="ROC Curves — All Baseline Models" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">ROC Curves — All 5 Baseline Models</div>
+          <div class="caption-text">
+            ROC curves for binary classification on both val (solid) and test (dashed) sets.
+            On validation, all models except LR cluster near the top-left with AUC &gt; 0.998.
+            On the test set, the curves spread significantly — RF and XGBoost maintain high AUC (0.97–0.97)
+            while LR drops to 0.65. The strong val→test AUC stability for tree models confirms that
+            gradient-boosted ensembles are robust to the class distribution shift,
+            likely because they rely on feature thresholds that remain discriminative across distributions.
+          </div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/models/f1_comparison.png" alt="F1 Score Comparison" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">F1 Score Comparison — Val vs Test</div>
+          <div class="caption-text">
+            Grouped bar chart comparing val F1 and test F1 for all 5 models on both binary and multiclass
+            tasks. The val→test F1 drop is moderate for tree models (−0.03 to −0.06 for binary) but severe
+            for LR (−0.036 binary, but −0.57 multiclass F1-macro). MLP achieves near-RF performance on test
+            binary (0.845 vs 0.862) suggesting neural networks generalise well to the shifted distribution.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confusion Matrices -->
+  <div class="section">
+    <h2>📊 Confusion Matrices — Best Models</h2>
+    <div class="img-grid img-grid-2">
+      <div class="img-card">
+        <img src="../outputs/models/cm_best_binary.png" alt="Confusion Matrix — Best Binary Model (LightGBM)" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Confusion Matrix — Best Binary Model: LightGBM (Test Set)</div>
+          <div class="caption-text">
+            LightGBM binary confusion matrix on the test set (55.06% attack). High recall (0.999) means
+            almost all attacks are detected — very few false negatives. However, the elevated FPR (0.50)
+            means roughly half of normal flows are incorrectly classified as attacks.
+            This recall-precision trade-off is expected when a model trained on 4.84% attack data
+            encounters 55% attack — the decision threshold is calibrated for low attack prevalence
+            and becomes miscalibrated at the higher test prevalence.
+          </div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/models/cm_best_multiclass.png" alt="Confusion Matrix — Best Multiclass Model (LightGBM)" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Confusion Matrix — Best Multiclass: LightGBM (Test Set)</div>
+          <div class="caption-text">
+            10-class confusion matrix. Strong diagonal for Normal (87% correctly classified) and
+            Generic (98%). However, Analysis, Backdoor, and DoS show significant off-diagonal confusion,
+            primarily being misclassified as Exploits or Normal. Shellcode and Worms collapse to near-zero
+            test F1 due to extreme rarity in both training and test sets. The multiclass task is fundamentally
+            harder than binary under distribution shift because inter-class boundaries also shift.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Multiclass Results -->
+  <div class="section">
+    <h2>🏷️ Multiclass Detection (10 Classes)</h2>
+
+    <h3>Validation Set</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Accuracy</th><th>F1-Macro</th><th>F1-Weighted</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Logistic Regression</td><td>0.4823</td><td class="metric-bad">0.1168</td><td>0.6252</td></tr>
+          <tr><td>Random Forest</td><td>0.9779</td><td>0.6131</td><td>0.9816</td></tr>
+          <tr><td>XGBoost</td><td>0.9840</td><td>0.6273</td><td>0.9845</td></tr>
+          <tr class="best-row"><td>LightGBM</td><td>0.9773</td><td class="metric-good">0.6574</td><td>0.9814</td></tr>
+          <tr><td>MLP</td><td>0.9713</td><td>0.5309</td><td>0.9766</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Test Set</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Accuracy</th><th>F1-Macro</th><th>F1-Weighted</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Logistic Regression</td><td>0.4053</td><td class="metric-bad">0.1913</td><td>0.4053</td></tr>
+          <tr class="best-row"><td>Random Forest</td><td>0.6862</td><td class="metric-good">0.4605</td><td>0.7295</td></tr>
+          <tr><td>XGBoost</td><td>0.6118</td><td>0.3276</td><td>0.6450</td></tr>
+          <tr><td>LightGBM</td><td>0.5877</td><td>0.3234</td><td>0.6324</td></tr>
+          <tr><td>MLP</td><td>0.6389</td><td>0.3815</td><td>0.6938</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Per-class F1 -->
+  <div class="section">
+    <h2>🏷️ Per-Class F1 — LightGBM Multiclass (Val vs Test)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Class</th><th>Val F1</th><th>Test F1</th><th>Δ (drop)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Analysis</td><td class="f1-low">0.1736</td><td class="f1-low">0.1065</td><td>−0.067</td></tr>
+          <tr><td>Backdoor</td><td class="f1-low">0.1535</td><td class="f1-low">0.1487</td><td>−0.005</td></tr>
+          <tr><td>DoS</td><td class="f1-mid">0.4205</td><td class="f1-low">0.1555</td><td>−0.265</td></tr>
+          <tr><td>Exploits</td><td class="f1-high">0.8274</td><td class="f1-mid">0.4889</td><td>−0.339</td></tr>
+          <tr><td>Fuzzers</td><td class="f1-mid">0.5949</td><td class="f1-low">0.2808</td><td>−0.314</td></tr>
+          <tr><td>Generic</td><td class="f1-high">0.9467</td><td class="f1-high">0.9798</td><td>+0.033</td></tr>
+          <tr><td>Normal</td><td class="f1-high">0.9928</td><td class="f1-mid">0.6530</td><td>−0.340</td></tr>
+          <tr><td>Reconnaissance</td><td class="f1-high">0.8440</td><td class="f1-mid">0.4212</td><td>−0.423</td></tr>
+          <tr><td>Shellcode</td><td class="f1-high">0.9003</td><td class="f1-zero">0.0000</td><td>−0.900</td></tr>
+          <tr><td>Worms</td><td class="f1-high">0.7200</td><td class="f1-zero">0.0000</td><td>−0.720</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout callout-danger">
+      <strong>Shellcode and Worms collapse to F1=0 on test</strong> — both rare attack categories
+      (1,511 and 174 training samples respectively) have zero test examples for the classes as they
+      appeared in training, resulting in complete classification failure on the shifted test distribution.
+      Generic is the one class that actually <em>improves</em> on test (+0.033) because it dominates the
+      test attack distribution.
+    </div>
+  </div>
+
+  <!-- RF Feature Importance -->
+  <div class="section">
+    <h2>⭐ Random Forest Feature Importance</h2>
+    <div class="img-grid img-grid-1">
+      <div class="img-card">
+        <img src="../outputs/models/rf_importance.png" alt="Random Forest Feature Importance" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Top-20 Feature Importances from Random Forest (Binary, Full Model)</div>
+          <div class="caption-text">
+            Feature importances from the fully trained RF binary classifier. <code>sttl</code> and
+            <code>ct_state_ttl</code> dominate — confirming the EDA finding that TTL-based features
+            are the strongest attack discriminators. Connection-tracking features
+            (<code>ct_dst_src_ltm</code>, <code>ct_dst_sport_ltm</code>, <code>ct_srv_dst</code>)
+            rank highly because they capture session-level traffic patterns that distinguish
+            scanning/flooding attacks from normal browsing. Byte/packet counts
+            (<code>sbytes</code>, <code>dbytes</code>, <code>Dpkts</code>) also contribute significantly —
+            attack flows tend to have distinctive volume profiles (very large for DoS, very small for
+            Reconnaissance stealth scans).
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HPO Best Params -->
+  <div class="section">
+    <h2>⚙️ Best Hyperparameters Found</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Task</th><th>Best Configuration</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Logistic Regression</td><td>Binary</td><td><code>C=0.001, solver=lbfgs, penalty=l2</code></td></tr>
+          <tr><td>Logistic Regression</td><td>Multiclass</td><td><code>C=1.0, solver=lbfgs</code></td></tr>
+          <tr><td>Random Forest</td><td>Binary</td><td><code>n_estimators=300, max_depth=20, max_features=sqrt, min_samples_split=2, min_samples_leaf=1</code></td></tr>
+          <tr><td>Random Forest</td><td>Multiclass</td><td><code>n_estimators=200, max_depth=30, max_features=sqrt, min_samples_split=10, min_samples_leaf=2</code></td></tr>
+          <tr><td>XGBoost</td><td>Binary</td><td><code>max_depth=10, lr=0.05, n_est=500, subsample=0.8, colsample=0.6, gamma=0.2, reg_α=0.01, reg_λ=2.0</code></td></tr>
+          <tr><td>XGBoost</td><td>Multiclass</td><td><code>max_depth=8, lr=0.03, n_est=300, subsample=0.8, colsample=1.0, reg_λ=0.5</code></td></tr>
+          <tr><td>LightGBM</td><td>Binary</td><td><code>num_leaves=255, lr=0.15, n_est=300, subsample=0.8, colsample=0.8, min_child=10</code></td></tr>
+          <tr><td>LightGBM</td><td>Multiclass</td><td><code>num_leaves=31, lr=0.1, n_est=200, subsample=0.6, colsample=0.8, min_child=10</code></td></tr>
+          <tr><td>MLP</td><td>Binary</td><td><code>hidden=(512,256,128), lr=1e-3, dropout=0.3, max_epochs=30, early_stop=5</code></td></tr>
+          <tr><td>MLP</td><td>Multiclass</td><td><code>hidden=(256,128), lr=1e-3, dropout=0.3, max_epochs=30, early_stop=5</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Additional Kaggle Notebook Outputs -->
+  <div class="section">
+    <h2>📓 Additional Training Outputs (Kaggle Notebook)</h2>
+    <div class="img-grid img-grid-2">
+      <div class="img-card">
+        <img src="../outputs/models/__results___files/__results___24_0.png" alt="Kaggle Notebook Output Cell 24" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Notebook Output — Cell 24</div>
+          <div class="caption-text">Training progress or evaluation output from Kaggle notebook cell 24 — likely HPO search results or cross-validation scores for one of the baseline models.</div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/models/__results___files/__results___25_0.png" alt="Kaggle Notebook Output Cell 25" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Notebook Output — Cell 25</div>
+          <div class="caption-text">Training or evaluation output from Kaggle notebook cell 25 — likely model performance metrics or learning curves from HPO best configuration training.</div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/models/__results___files/__results___26_0.png" alt="Kaggle Notebook Output Cell 26 (first)" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Notebook Output — Cell 26 (Output 1)</div>
+          <div class="caption-text">First output from notebook cell 26 — likely a comparison chart or evaluation metric summary across multiple models.</div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/models/__results___files/__results___26_2.png" alt="Kaggle Notebook Output Cell 26 (third)" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Notebook Output — Cell 26 (Output 3)</div>
+          <div class="caption-text">Third output from notebook cell 26 — likely a secondary evaluation chart, such as precision-recall curves or a per-class metric breakdown.</div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/models/__results___files/__results___27_0.png" alt="Kaggle Notebook Output Cell 27" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Notebook Output — Cell 27</div>
+          <div class="caption-text">Output from notebook cell 27 — likely the final summary plot or per-model comparison dashboard from the baseline training notebook.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="findings-box">
+    <h3>🔑 Phase 4 — Key Findings</h3>
+    <ul>
+      <li><strong>LightGBM best on val binary</strong> (F1=0.8953, AUC=0.9989) — gradient boosting excels at tabular flow features with a well-tuned learning rate and high leaf count.</li>
+      <li><strong>Random Forest best on test binary</strong> (F1=0.8617, AUC=0.9691) — RF's bagging ensemble generalises better to the shifted 55% attack distribution than single-pass boosting.</li>
+      <li><strong>Smallest val→test F1 drop: RF (−0.022)</strong> vs LightGBM (−0.066). RF's variance reduction via averaging makes it more robust to distribution shift.</li>
+      <li><strong>High recall (≥0.985) across all models on both splits</strong> — SMOTE-trained models achieve excellent attack detection rate. The challenge is controlling FPR at the shifted prevalence.</li>
+      <li><strong>Shellcode and Worms: F1=0 on test</strong> for all models due to combined rarity and distribution shift. These classes need specialised oversampling or anomaly detection approaches.</li>
+      <li><strong>LR multiclass failure</strong> (F1-macro=0.117 val) — linear decision boundaries cannot separate 10 non-linearly distributed attack categories. Non-linear models required.</li>
+    </ul>
+  </div>
+
+</main>
+
+<script src="js/main.js"></script>
+</body>
+</html>

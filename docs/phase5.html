@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phase 5 — GNN Training · UNSW-NB15 GNN NIDS</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">UNSW-NB15 Research</div>
+    <div class="sidebar-title">GNN-Based NIDS</div>
+    <div class="sidebar-subtitle">Network Intrusion Detection</div>
+  </div>
+  <div class="nav-section-label">Pipeline Phases</div>
+  <ul class="nav-list">
+    <li><a href="index.html"  class="nav-link"><span class="nav-icon">🏠</span>Overview</a></li>
+    <li><a href="phase1.html" class="nav-link"><span class="nav-icon">📊</span>Phase 1 — EDA</a></li>
+    <li><a href="phase2.html" class="nav-link"><span class="nav-icon">🔧</span>Phase 2 — Preprocessing</a></li>
+    <li><a href="phase3.html" class="nav-link"><span class="nav-icon">🕸️</span>Phase 3 — Graph</a></li>
+    <li><a href="phase4.html" class="nav-link"><span class="nav-icon">⚡</span>Phase 4 — Baselines</a></li>
+    <li><a href="phase5.html" class="nav-link"><span class="nav-icon">🧠</span>Phase 5 — GNN Training</a></li>
+    <li><a href="phase6.html" class="nav-link"><span class="nav-icon">📈</span>Phase 6 — Evaluation</a></li>
+  </ul>
+  <div class="sidebar-footer">UNSW-NB15 &middot; June 2026</div>
+</aside>
+
+<main class="content">
+
+  <div class="page-header">
+    <div class="page-badge">Phase 5</div>
+    <h1>GNN Model Training</h1>
+    <p class="subtitle">
+      Four Graph Neural Network variants trained on the UNSW-NB15 IP graph for both binary and 10-class
+      edge classification. All models trained on Kaggle with Tesla T4 GPU (16 GB VRAM) using gradient
+      checkpointing and edge subsampling to manage memory constraints.
+    </p>
+    <span class="status-badge status-complete">✓ Complete — 4 variants × 2 tasks on Kaggle T4</span>
+  </div>
+
+  <!-- Setup Stats -->
+  <div class="section">
+    <h2>⚙️ Training Setup</h2>
+    <div class="stat-grid">
+      <div class="stat-box accent">
+        <div class="stat-value">4</div>
+        <div class="stat-label">GNN Architectures</div>
+      </div>
+      <div class="stat-box accent">
+        <div class="stat-value">2</div>
+        <div class="stat-label">Tasks (binary + 10-class)</div>
+      </div>
+      <div class="stat-box success">
+        <div class="stat-value">T4 GPU</div>
+        <div class="stat-label">Kaggle 16 GB VRAM</div>
+      </div>
+      <div class="stat-box warning">
+        <div class="stat-value">8</div>
+        <div class="stat-label">HPO configs searched</div>
+      </div>
+      <div class="stat-box purple">
+        <div class="stat-value">200k</div>
+        <div class="stat-label">HPO edge subsample</div>
+      </div>
+      <div class="stat-box danger">
+        <div class="stat-value">1.6M</div>
+        <div class="stat-label">Full-batch train edges</div>
+      </div>
+    </div>
+    <div class="callout callout-info">
+      <strong>Memory engineering required for GAT.</strong>
+      GATv2Conv with 4 attention heads on 1.6M edges produces attention tensors of ~3.3 GB per layer.
+      Three mitigations applied: (1) gradient checkpointing on all conv layers, (2) HPO limited to 200k
+      edge subgraph, (3) best-state tensors saved to CPU via <code>{k: v.cpu() for k,v in state_dict()}</code>
+      to prevent doubling VRAM during model saving.
+    </div>
+  </div>
+
+  <!-- Architecture Table -->
+  <div class="section">
+    <h2>🏗️ Model Architectures</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Variant</th><th>Message Passing</th><th>Edge Features in MP</th>
+            <th>Hidden Dim</th><th>Edge Repr Dim</th><th>~Params</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="arch-tag tag-gcn">NIDS-GCN</span></td>
+            <td>GCNConv × 2</td>
+            <td><span class="arch-tag tag-no">No</span></td>
+            <td>256</td>
+            <td>2×256 + 37 = 549</td>
+            <td>~243k</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-gat">NIDS-GAT</span></td>
+            <td>GATv2Conv(4h) → GATv2Conv(1h)</td>
+            <td><span class="arch-tag tag-yes">Yes (edge_dim=64)</span></td>
+            <td>128</td>
+            <td>2×128 + 64 = 320</td>
+            <td>~818k</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-sage">NIDS-SAGE</span></td>
+            <td>SAGEConv × 2</td>
+            <td><span class="arch-tag tag-no">No</span></td>
+            <td>256</td>
+            <td>2×256 + 37 = 549</td>
+            <td>~312k</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-full">NIDS-FULL</span></td>
+            <td>GATv2Conv(4h) + SAGEConv</td>
+            <td><span class="arch-tag tag-yes">Yes (edge_dim=64)</span></td>
+            <td>128</td>
+            <td>576</td>
+            <td>~492k</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      All variants share the same <strong>edge classifier tail</strong>: the edge representation
+      (concatenation of src/dst node embeddings + edge features) is passed through
+      <code>Linear → BatchNorm → ReLU → Dropout → Linear → ReLU → Linear(→K)</code>
+      where K=2 for binary and K=10 for multiclass. The node embeddings are learned by the GNN layers;
+      the edge features (<code>edge_attr</code>, 37 dims) are concatenated directly without transformation
+      in GCN/SAGE, and projected to 64 dims before GAT attention in GAT/FULL.
+    </p>
+  </div>
+
+  <!-- HPO Results -->
+  <div class="section">
+    <h2>🔍 Hyperparameter Optimisation Results</h2>
+    <div class="callout callout-info">
+      <strong>HPO Strategy:</strong> 8 configurations = hidden_dim ∈ {128, 256} × dropout ∈ {0.3, 0.4} ×
+      lr ∈ {1e-3, 5e-4}. Each config trained for 20 epochs on a 200k-edge subsample (binary task only).
+      Best config by val F1 used for full training (50 epochs, early stop patience=10).
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Variant</th><th>Best hidden_dim</th><th>Best dropout</th><th>Best lr</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="arch-tag tag-gcn">NIDS-GCN</span></td><td>256</td><td>0.4</td><td>0.001</td></tr>
+          <tr><td><span class="arch-tag tag-gat">NIDS-GAT</span></td><td>128</td><td>0.3</td><td>0.001</td></tr>
+          <tr><td><span class="arch-tag tag-sage">NIDS-SAGE</span></td><td>256</td><td>0.3</td><td>0.0005</td></tr>
+          <tr><td><span class="arch-tag tag-full">NIDS-FULL</span></td><td>128</td><td>0.4</td><td>0.001</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      GCN and SAGE prefer larger hidden dim (256) — both rely entirely on node embeddings for
+      edge representation and benefit from richer node features. GAT and FULL use attention-weighted
+      aggregation with edge features, making hidden dim less critical — smaller (128) prevents
+      overfitting in the already-expressive attention mechanism.
+      SAGE uniquely benefits from a lower learning rate (5e-4) to stabilise its mean-aggregator training.
+    </p>
+  </div>
+
+  <!-- Training Curves -->
+  <div class="section">
+    <h2>📉 Training Curves</h2>
+    <div class="img-grid img-grid-2">
+      <div class="img-card">
+        <img src="../outputs/gnn_output/gnn_training_curves_binary.png" alt="GNN Training Curves — Binary" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Training Curves — Binary Classification (4 GNN Variants)</div>
+          <div class="caption-text">
+            Train loss and validation F1 over epochs for all 4 GNN variants on the binary task.
+            All models converge within 20–30 epochs. NIDS-SAGE shows the smoothest convergence
+            with its lower lr (5e-4). NIDS-GAT exhibits early instability in the first 5 epochs
+            consistent with attention head initialisation sensitivity, but stabilises after epoch 8.
+            NIDS-FULL's dual-stream architecture converges slightly more slowly due to its higher
+            parameter count and combined GAT+SAGE message passing. Early stopping triggers around
+            epoch 35–45 for most variants.
+          </div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/gnn_output/gnn_training_curves_multiclass.png" alt="GNN Training Curves — Multiclass" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Training Curves — Multiclass (10-class) Classification</div>
+          <div class="caption-text">
+            Multiclass training loss (cross-entropy) and validation F1-macro over epochs.
+            Loss curves decrease steadily for all models, but val F1-macro plateaus at a much
+            lower value (~0.15–0.27) compared to binary (~0.80+). The gap between binary and
+            multiclass F1-macro reflects the fundamental difficulty of distinguishing 10 classes
+            with severe imbalance (Worms: 174 samples) and the limited discriminative power of
+            51-node graph structure for fine-grained attack classification.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Binary Val Results -->
+  <div class="section">
+    <h2>🎯 Binary Detection — Validation Set (attack ratio 4.84%)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th><th>ROC-AUC</th><th>FPR</th><th>MCC</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="arch-tag tag-gcn">NIDS-GCN</span></td>
+            <td>0.9793</td><td>0.7134</td><td>0.9579</td><td>0.8177</td><td>0.9769</td><td>0.0196</td><td>0.8169</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-gat">NIDS-GAT</span></td>
+            <td>0.9789</td><td>0.6988</td><td>0.9907</td><td>0.8196</td><td>0.9801</td><td>0.0217</td><td>0.8226</td>
+          </tr>
+          <tr class="best-row">
+            <td><span class="arch-tag tag-sage">NIDS-SAGE</span></td>
+            <td>0.9802</td><td>0.7153</td><td>0.9829</td><td class="metric-good">0.8281</td><td>0.9777</td><td>0.0199</td><td>0.8295</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-full">NIDS-FULL</span></td>
+            <td>0.9782</td><td>0.6906</td><td>0.9962</td><td>0.8157</td><td>0.9830</td><td>0.0227</td><td>0.8198</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>🎯 Binary Detection — Test Set (attack ratio 55.06%)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th><th>ROC-AUC</th><th>PR-AUC</th><th>FPR</th><th>MCC</th></tr>
+        </thead>
+        <tbody>
+          <tr class="best-row">
+            <td><span class="arch-tag tag-gcn">NIDS-GCN</span></td>
+            <td>0.4800</td><td>0.5365</td><td>0.4090</td><td class="metric-ok">0.4641</td><td>0.5836</td><td>0.5431</td><td>0.4329</td><td>−0.024</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-gat">NIDS-GAT</span></td>
+            <td>0.4371</td><td>0.4815</td><td>0.2898</td><td class="metric-bad">0.3618</td><td>0.5899</td><td>0.5455</td><td>0.3824</td><td>−0.098</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-sage">NIDS-SAGE</span> <span class="arch-tag tag-best">Best AUC</span></td>
+            <td>0.4046</td><td>0.3701</td><td>0.1160</td><td class="metric-bad">0.1767</td><td class="metric-good">0.6020</td><td>0.5501</td><td>0.2419</td><td>−0.166</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-full">NIDS-FULL</span></td>
+            <td>0.4006</td><td>0.4065</td><td>0.1928</td><td class="metric-bad">0.2616</td><td>0.5655</td><td>0.5298</td><td>0.3449</td><td>−0.172</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ROC and PR Curves -->
+  <div class="section">
+    <h2>📈 ROC &amp; PR Curves</h2>
+    <div class="img-grid img-grid-2">
+      <div class="img-card">
+        <img src="../outputs/gnn_output/gnn_roc_curves.png" alt="GNN ROC Curves" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">ROC Curves — All GNN Variants (Val + Test)</div>
+          <div class="caption-text">
+            ROC curves for all 4 GNN variants. <strong>Validation (solid lines):</strong> all four
+            cluster tightly with AUC 0.977–0.983, showing strong in-distribution discrimination.
+            NIDS-FULL has the highest val AUC (0.983) due to its combined GAT+SAGE features.
+            <strong>Test (dashed lines):</strong> all curves drop dramatically toward the diagonal,
+            with AUC 0.566–0.602. NIDS-SAGE achieves the best test AUC (0.602) despite having
+            the worst test F1 (0.177) — indicating good rank ordering ability but poor calibration
+            at the test prevalence. The test ROC curves never reaching the top-left corner confirms
+            the UNK node problem: the GNN cannot reliably separate attacks from normal flows when
+            all flows connect to a node with no training history.
+          </div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/gnn_output/gnn_pr_curves.png" alt="GNN Precision-Recall Curves" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Precision-Recall Curves — Test Set</div>
+          <div class="caption-text">
+            Precision-Recall curves on the test set. At the 55% attack prevalence, the random
+            classifier baseline has PR-AUC ≈ 0.55 (equal to attack prevalence). All GNN models
+            achieve PR-AUC 0.530–0.550, only marginally above the no-skill baseline.
+            This confirms that GNNs provide minimal discriminative value on the UNK-dominated
+            test set. In contrast, baselines achieve substantially higher PR-AUC on the same test set.
+            NIDS-SAGE leads at PR-AUC=0.550, NIDS-FULL trails at 0.530.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Multiclass Results -->
+  <div class="section">
+    <h2>🏷️ Multiclass Detection (10 Classes)</h2>
+
+    <h3>Validation Set</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Accuracy</th><th>F1-Macro</th><th>F1-Weighted</th></tr>
+        </thead>
+        <tbody>
+          <tr class="best-row">
+            <td><span class="arch-tag tag-gcn">NIDS-GCN</span></td>
+            <td>0.9453</td><td class="metric-good">0.2739</td><td>0.9556</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-gat">NIDS-GAT</span></td>
+            <td>0.9394</td><td>0.2297</td><td>0.9502</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-sage">NIDS-SAGE</span></td>
+            <td>0.9237</td><td>0.1723</td><td>0.9388</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-full">NIDS-FULL</span></td>
+            <td>0.9285</td><td>0.1535</td><td>0.9392</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Test Set</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Accuracy</th><th>F1-Macro</th><th>F1-Weighted</th></tr>
+        </thead>
+        <tbody>
+          <tr class="best-row">
+            <td><span class="arch-tag tag-gcn">NIDS-GCN</span></td>
+            <td>0.3246</td><td class="metric-ok">0.1423</td><td>0.3615</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-gat">NIDS-GAT</span></td>
+            <td>0.3255</td><td class="metric-bad">0.1117</td><td>0.2998</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-sage">NIDS-SAGE</span></td>
+            <td>0.3234</td><td class="metric-bad">0.1136</td><td>0.2820</td>
+          </tr>
+          <tr>
+            <td><span class="arch-tag tag-full">NIDS-FULL</span></td>
+            <td>0.2872</td><td class="metric-bad">0.0888</td><td>0.2382</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Confusion Matrices -->
+  <div class="section">
+    <h2>📊 Confusion Matrices — Best GNN (NIDS-GCN)</h2>
+    <div class="img-grid img-grid-2">
+      <div class="img-card">
+        <img src="../outputs/gnn_output/cm_best_gnn_binary.png" alt="Confusion Matrix — Best GNN Binary (NIDS-GCN)" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Confusion Matrix — NIDS-GCN Binary (Test Set)</div>
+          <div class="caption-text">
+            Binary confusion matrix for the best-performing GNN (NIDS-GCN) on the test set.
+            20,981 true negatives, 16,019 false positives (FPR=43%), 26,793 false negatives,
+            18,539 true positives (TPR=41%). The model is essentially operating near random
+            on the test distribution — neither recall nor precision exceeds 0.55.
+            This strongly contrasts with the validation confusion matrix where FPR was only 1.96%.
+            The dramatic shift confirms the UNK node hypothesis: without meaningful node embeddings,
+            the model falls back to edge features alone — but with edge features that were normalised
+            to the training distribution, they are insufficient to correctly calibrate predictions
+            at 55% attack prevalence.
+          </div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/gnn_output/cm_best_gnn_multiclass.png" alt="Confusion Matrix — Best GNN Multiclass (NIDS-GCN)" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Confusion Matrix — NIDS-GCN Multiclass (Test Set)</div>
+          <div class="caption-text">
+            10-class confusion matrix for NIDS-GCN multiclass on the test set. Normal flows (index 6)
+            are classified with F1=0.621, Exploits with F1=0.436, and Fuzzers with F1=0.268.
+            All remaining attack classes — Analysis, Backdoor, DoS, Generic, Reconnaissance,
+            Shellcode, Worms — have F1=0 or near-zero. The model essentially learns to classify only
+            the three largest/most distinctive classes (Normal, Exploits, Fuzzers) and predicts random
+            or majority labels for the rest. The F1-weighted=0.362 is driven almost entirely by Normal
+            class performance.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Per-class F1 Comparison -->
+  <div class="section">
+    <h2>🏷️ Per-Class F1 — GCN vs LightGBM (Test Set)</h2>
+    <div class="img-grid img-grid-1">
+      <div class="img-card">
+        <img src="../outputs/gnn_output/gnn_perclass_f1.png" alt="Per-class F1 GNN vs LightGBM" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Per-Class F1 Comparison: NIDS-GCN vs LightGBM Baseline (Test Set)</div>
+          <div class="caption-text">
+            Grouped bar chart comparing per-class F1 for NIDS-GCN (best GNN) and LightGBM (best baseline
+            on val) on the 10-class test set. LightGBM dominates on every class except Worms (where both
+            score near zero) and achieves higher F1 on Reconnaissance (0.421 vs 0.089), Generic (0.980 vs 0.000),
+            and Normal (0.653 vs 0.621). NIDS-GCN's performance advantage (if any) is limited to the Normal
+            class — edge features alone carry enough signal to distinguish "no attack" from "something unusual"
+            but not to pinpoint which of 10 specific attack types is occurring when node context is absent.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Class</th><th>NIDS-GCN (best GNN)</th><th>LightGBM (best baseline)</th><th>Winner</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Analysis</td><td class="f1-zero">0.000</td><td class="f1-low">0.107</td><td>LightGBM</td></tr>
+          <tr><td>Backdoor</td><td class="f1-zero">0.000</td><td class="f1-low">0.149</td><td>LightGBM</td></tr>
+          <tr><td>DoS</td><td class="f1-zero">0.000</td><td class="f1-low">0.156</td><td>LightGBM</td></tr>
+          <tr><td>Exploits</td><td class="f1-mid">0.436</td><td class="f1-mid">0.489</td><td>LightGBM</td></tr>
+          <tr><td>Fuzzers</td><td class="f1-low">0.268</td><td class="f1-low">0.281</td><td>LightGBM</td></tr>
+          <tr><td>Generic</td><td class="f1-zero">0.000</td><td class="f1-high">0.980</td><td>LightGBM</td></tr>
+          <tr><td>Normal</td><td class="f1-mid">0.621</td><td class="f1-mid">0.653</td><td>LightGBM</td></tr>
+          <tr><td>Reconnaissance</td><td class="f1-low">0.089</td><td class="f1-mid">0.421</td><td>LightGBM</td></tr>
+          <tr><td>Shellcode</td><td class="f1-zero">0.000</td><td class="f1-zero">0.000</td><td>Tie</td></tr>
+          <tr><td>Worms</td><td class="f1-zero">0.008</td><td class="f1-zero">0.000</td><td>GCN (marginally)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- GNN vs Baseline -->
+  <div class="section">
+    <h2>⚔️ GNN vs Baseline Comparison</h2>
+    <div class="img-grid img-grid-1">
+      <div class="img-card">
+        <img src="../outputs/gnn_output/gnn_vs_baseline.png" alt="GNN vs Baseline Performance Comparison" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">GNN vs Baseline — F1 Score Comparison (Val &amp; Test)</div>
+          <div class="caption-text">
+            Side-by-side comparison of binary F1 and multiclass F1-macro for all 9 models (5 baselines +
+            4 GNNs) on both val and test sets. <strong>Key insight:</strong> on the validation set, the
+            best GNN (NIDS-SAGE, F1=0.828) is only 0.067 behind the best baseline (LightGBM, F1=0.895)
+            — a competitive gap considering GNNs had no fine-tuned HPO budget comparable to baselines.
+            On the test set, however, baselines uniformly outperform GNNs by 0.40–0.70 F1.
+            The crossover in rankings between val and test is dramatic and is entirely explained
+            by the UNK node graph structure on test. Graph structure provides no generalisation benefit
+            when all test edges connect to an unseen node.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Additional Kaggle Notebook Outputs -->
+  <div class="section">
+    <h2>📓 Additional Training Outputs (Kaggle Notebook)</h2>
+    <div class="img-grid img-grid-2">
+      <div class="img-card">
+        <img src="../outputs/gnn_output/__results___14_0.png" alt="GNN Notebook Output Cell 14" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Notebook Output — Cell 14</div>
+          <div class="caption-text">Training progress, graph data summary, or HPO search configuration output from Kaggle notebook cell 14 — likely the graph statistics print or the HPO initialisation.</div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/gnn_output/__results___18_0.png" alt="GNN Notebook Output Cell 18" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Notebook Output — Cell 18</div>
+          <div class="caption-text">Evaluation or training output from cell 18 — likely the HPO results table or the first model's (GCN) binary training progress log.</div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/gnn_output/__results___19_0.png" alt="GNN Notebook Output Cell 19" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Notebook Output — Cell 19</div>
+          <div class="caption-text">Output from cell 19 — likely the GAT or SAGE binary training progress, or intermediate evaluation metrics during training.</div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/gnn_output/__results___20_0.png" alt="GNN Notebook Output Cell 20" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Notebook Output — Cell 20</div>
+          <div class="caption-text">Output from cell 20 — likely NIDS-FULL binary training progress or post-training binary evaluation summary across all 4 variants.</div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/gnn_output/__results___21_0.png" alt="GNN Notebook Output Cell 21" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Notebook Output — Cell 21</div>
+          <div class="caption-text">Output from cell 21 — likely the start of multiclass training or a binary evaluation summary plot generated within the notebook.</div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/gnn_output/__results___22_1.png" alt="GNN Notebook Output Cell 22" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Notebook Output — Cell 22 (Output 2)</div>
+          <div class="caption-text">Second output from cell 22 — likely a multiclass training curve or per-class F1 breakdown generated mid-notebook.</div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/gnn_output/__results___23_1.png" alt="GNN Notebook Output Cell 23 (first)" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Notebook Output — Cell 23 (Output 2)</div>
+          <div class="caption-text">Second output from cell 23 — likely the combined results summary or the gnn_results.json save confirmation with printed metrics.</div>
+        </div>
+      </div>
+      <div class="img-card">
+        <img src="../outputs/gnn_output/__results___23_3.png" alt="GNN Notebook Output Cell 23 (third)" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Notebook Output — Cell 23 (Output 4)</div>
+          <div class="caption-text">Fourth output from cell 23 — likely the final evaluation chart or the GNN vs baseline comparison plot generated at the end of the training notebook.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="findings-box">
+    <h3>🔑 Phase 5 — Key Findings</h3>
+    <ul>
+      <li><strong>Strong val performance:</strong> All 4 GNNs achieve val F1 0.816–0.828 (binary) — within 0.07 of best baseline (LightGBM 0.895).</li>
+      <li><strong>Catastrophic test degradation:</strong> Test F1 drops to 0.177–0.464 — all negative MCC values indicate worse-than-random class calibration at 55% attack prevalence.</li>
+      <li><strong>Root cause confirmed:</strong> Test set = all flows via UNK node (index 50). Node embeddings learned during training are irrelevant on test. Edge features are the only signal — but baselines use edge features directly and outperform GNNs by 0.40 F1.</li>
+      <li><strong>NIDS-GCN best on test</strong> (F1=0.464, F1-macro=0.142): simpler aggregation (GCNConv) degrades less gracefully than attention mechanisms which rely more heavily on node neighbourhood quality.</li>
+      <li><strong>NIDS-SAGE best test ROC-AUC</strong> (0.602): SAGE's mean-aggregator produces more stable rank ordering even without meaningful node neighbours.</li>
+      <li><strong>Val AUC (0.977–0.983) ≈ baseline AUC (0.985–0.999):</strong> GNNs learn equivalent discriminative representations on in-distribution data.</li>
+      <li><strong>NIDS-FULL does not outperform simpler architectures</strong> on test — complexity is a liability under distribution shift, not an advantage.</li>
+    </ul>
+  </div>
+
+</main>
+
+<script src="js/main.js"></script>
+</body>
+</html>

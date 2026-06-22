@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Overview — UNSW-NB15 GNN NIDS</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ======================== SIDEBAR ======================== -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">UNSW-NB15 Research</div>
+    <div class="sidebar-title">GNN-Based NIDS</div>
+    <div class="sidebar-subtitle">Network Intrusion Detection</div>
+  </div>
+  <div class="nav-section-label">Pipeline Phases</div>
+  <ul class="nav-list">
+    <li><a href="index.html"  class="nav-link"><span class="nav-icon">🏠</span>Overview</a></li>
+    <li><a href="phase1.html" class="nav-link"><span class="nav-icon">📊</span>Phase 1 — EDA</a></li>
+    <li><a href="phase2.html" class="nav-link"><span class="nav-icon">🔧</span>Phase 2 — Preprocessing</a></li>
+    <li><a href="phase3.html" class="nav-link"><span class="nav-icon">🕸️</span>Phase 3 — Graph</a></li>
+    <li><a href="phase4.html" class="nav-link"><span class="nav-icon">⚡</span>Phase 4 — Baselines</a></li>
+    <li><a href="phase5.html" class="nav-link"><span class="nav-icon">🧠</span>Phase 5 — GNN Training</a></li>
+    <li><a href="phase6.html" class="nav-link"><span class="nav-icon">📈</span>Phase 6 — Evaluation</a></li>
+  </ul>
+  <div class="sidebar-footer">UNSW-NB15 &middot; June 2026</div>
+</aside>
+
+<!-- ======================== CONTENT ======================== -->
+<main class="content">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-badge">Project Report</div>
+    <h1>Graph Neural Networks for Network Intrusion Detection</h1>
+    <p class="subtitle">
+      A complete ML pipeline on the UNSW-NB15 dataset — from exploratory analysis through graph construction
+      to GNN training — evaluated against classical baselines across binary and 10-class attack classification tasks.
+    </p>
+    <span class="status-badge status-complete">✓ All 6 phases complete</span>
+  </div>
+
+  <!-- Dataset At-a-Glance -->
+  <div class="section">
+    <h2>📋 Dataset at a Glance</h2>
+    <div class="stat-grid">
+      <div class="stat-box accent">
+        <div class="stat-value">2.54M</div>
+        <div class="stat-label">Total Network Flows</div>
+      </div>
+      <div class="stat-box danger">
+        <div class="stat-value">321K</div>
+        <div class="stat-label">Attack Flows (12.65%)</div>
+      </div>
+      <div class="stat-box success">
+        <div class="stat-value">2.22M</div>
+        <div class="stat-label">Normal Flows (87.35%)</div>
+      </div>
+      <div class="stat-box accent">
+        <div class="stat-value">37</div>
+        <div class="stat-label">Final Features</div>
+      </div>
+      <div class="stat-box warning">
+        <div class="stat-value">10</div>
+        <div class="stat-label">Attack Categories</div>
+      </div>
+      <div class="stat-box purple">
+        <div class="stat-value">28 days</div>
+        <div class="stat-label">Data Capture Window</div>
+      </div>
+    </div>
+    <div class="callout callout-warning">
+      <strong>⚠️ Distribution Shift</strong>
+      Validation set: 4.84% attack ratio. Test set: 55.06% attack ratio. All test flows connect to
+      a single unseen (UNK) IP node — a fundamental challenge for GNN generalisation tested throughout this project.
+    </div>
+  </div>
+
+  <!-- Pipeline Overview -->
+  <div class="section">
+    <h2>🔄 Project Pipeline</h2>
+    <div class="pipeline-wrap">
+      <div class="pipeline">
+        <div class="pipeline-step">
+          <div class="pipeline-icon">📊</div>
+          <div class="pipeline-step-label">Phase 1</div>
+          <div class="pipeline-step-sub">Exploratory<br>Data Analysis</div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-icon">🔧</div>
+          <div class="pipeline-step-label">Phase 2</div>
+          <div class="pipeline-step-sub">Data<br>Preprocessing</div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-icon">🕸️</div>
+          <div class="pipeline-step-label">Phase 3</div>
+          <div class="pipeline-step-sub">Graph<br>Construction</div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-icon">⚡</div>
+          <div class="pipeline-step-label">Phase 4</div>
+          <div class="pipeline-step-sub">Baseline<br>Models</div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-icon">🧠</div>
+          <div class="pipeline-step-label">Phase 5</div>
+          <div class="pipeline-step-sub">GNN<br>Training</div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-icon">📈</div>
+          <div class="pipeline-step-label">Phase 6</div>
+          <div class="pipeline-step-sub">Evaluation &amp;<br>Comparison</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Results Summary -->
+  <div class="section">
+    <h2>🏆 Key Results Summary</h2>
+    <h3>Binary Detection — Test Set (attack ratio 55.06%)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Model</th><th>Type</th><th>Accuracy</th><th>F1</th><th>ROC-AUC</th><th>FPR</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="best-row">
+            <td>Random Forest</td><td>Baseline</td><td>0.8233</td><td class="metric-good">0.8617</td><td class="metric-good">0.9691</td><td>0.393</td>
+          </tr>
+          <tr>
+            <td>XGBoost</td><td>Baseline</td><td>0.7911</td><td>0.8405</td><td>0.9745</td><td>0.465</td>
+          </tr>
+          <tr>
+            <td>LightGBM</td><td>Baseline</td><td>0.7740</td><td>0.8296</td><td>0.9375</td><td>0.502</td>
+          </tr>
+          <tr>
+            <td>MLP</td><td>Baseline</td><td>0.7977</td><td>0.8448</td><td>0.9769</td><td>0.450</td>
+          </tr>
+          <tr>
+            <td>NIDS-GCN <span class="arch-tag tag-gcn">Best GNN</span></td><td>GNN</td><td>0.4800</td><td class="metric-ok">0.4641</td><td class="metric-ok">0.5836</td><td>0.433</td>
+          </tr>
+          <tr>
+            <td>NIDS-GAT</td><td>GNN</td><td>0.4371</td><td class="metric-bad">0.3618</td><td>0.5899</td><td>0.382</td>
+          </tr>
+          <tr>
+            <td>NIDS-SAGE</td><td>GNN</td><td>0.4046</td><td class="metric-bad">0.1767</td><td>0.6020</td><td>0.242</td>
+          </tr>
+          <tr>
+            <td>NIDS-FULL</td><td>GNN</td><td>0.4006</td><td class="metric-bad">0.2616</td><td>0.5655</td><td>0.345</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Multiclass (10 Classes) — Test Set F1-macro</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Type</th><th>F1-macro</th><th>F1-weighted</th><th>Accuracy</th></tr>
+        </thead>
+        <tbody>
+          <tr class="best-row">
+            <td>Random Forest</td><td>Baseline</td><td class="metric-good">0.4605</td><td>0.7295</td><td>0.6862</td>
+          </tr>
+          <tr>
+            <td>MLP</td><td>Baseline</td><td>0.3815</td><td>0.6938</td><td>0.6389</td>
+          </tr>
+          <tr>
+            <td>XGBoost</td><td>Baseline</td><td>0.3276</td><td>0.6450</td><td>0.6118</td>
+          </tr>
+          <tr>
+            <td>LightGBM</td><td>Baseline</td><td>0.3234</td><td>0.6324</td><td>0.5877</td>
+          </tr>
+          <tr>
+            <td>NIDS-GCN <span class="arch-tag tag-gcn">Best GNN</span></td><td>GNN</td><td class="metric-ok">0.1423</td><td>0.3615</td><td>0.3246</td>
+          </tr>
+          <tr>
+            <td>NIDS-SAGE</td><td>GNN</td><td class="metric-bad">0.1136</td><td>0.2820</td><td>0.3234</td>
+          </tr>
+          <tr>
+            <td>NIDS-GAT</td><td>GNN</td><td class="metric-bad">0.1117</td><td>0.2998</td><td>0.3255</td>
+          </tr>
+          <tr>
+            <td>NIDS-FULL</td><td>GNN</td><td class="metric-bad">0.0888</td><td>0.2382</td><td>0.2872</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-info">
+      <strong>Why do GNNs underperform baselines on the test set?</strong>
+      GNNs learn rich node-neighbourhood embeddings during training. The test set, however, contains only flows
+      between unknown IP pairs that all map to a single UNK node (index 50). With no meaningful neighbourhood
+      to aggregate over, the GNN's structural advantage is eliminated — only edge features carry signal.
+      Classical baselines use edge features directly and therefore generalise much better to the shifted distribution.
+    </div>
+  </div>
+
+  <!-- Phase Navigation Cards -->
+  <div class="section">
+    <h2>📂 Explore by Phase</h2>
+    <div class="phase-grid">
+      <a href="phase1.html" class="phase-card">
+        <div class="phase-number">Phase 1</div>
+        <h3>📊 Exploratory Data Analysis</h3>
+        <p>Dataset schema, null analysis, class distributions, feature correlations, PCA/t-SNE, and RF importance.</p>
+      </a>
+      <a href="phase2.html" class="phase-card">
+        <div class="phase-number">Phase 2</div>
+        <h3>🔧 Data Preprocessing</h3>
+        <p>Deduplication (−480k rows), categorical encoding, 37 feature selection, SMOTE resampling.</p>
+      </a>
+      <a href="phase3.html" class="phase-card">
+        <div class="phase-number">Phase 3</div>
+        <h3>🕸️ Graph Construction</h3>
+        <p>51-node IP graph, 1.6M training edges, node/edge feature engineering for PyG.</p>
+      </a>
+      <a href="phase4.html" class="phase-card">
+        <div class="phase-number">Phase 4</div>
+        <h3>⚡ Baseline Models</h3>
+        <p>LR, RF, XGBoost, LightGBM, MLP — with RandomizedSearchCV HPO. RF best on test.</p>
+      </a>
+      <a href="phase5.html" class="phase-card">
+        <div class="phase-number">Phase 5</div>
+        <h3>🧠 GNN Training</h3>
+        <p>4 GNN variants (GCN, GAT, SAGE, FULL) × binary + multiclass on Kaggle T4 GPU.</p>
+      </a>
+      <a href="phase6.html" class="phase-card">
+        <div class="phase-number">Phase 6</div>
+        <h3>📈 Final Evaluation</h3>
+        <p>Full baseline vs GNN comparison, distribution shift analysis, and project conclusions.</p>
+      </a>
+    </div>
+  </div>
+
+</main>
+
+<script src="js/main.js"></script>
+</body>
+</html>

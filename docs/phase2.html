@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phase 2 — Preprocessing · UNSW-NB15 GNN NIDS</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">UNSW-NB15 Research</div>
+    <div class="sidebar-title">GNN-Based NIDS</div>
+    <div class="sidebar-subtitle">Network Intrusion Detection</div>
+  </div>
+  <div class="nav-section-label">Pipeline Phases</div>
+  <ul class="nav-list">
+    <li><a href="index.html"  class="nav-link"><span class="nav-icon">🏠</span>Overview</a></li>
+    <li><a href="phase1.html" class="nav-link"><span class="nav-icon">📊</span>Phase 1 — EDA</a></li>
+    <li><a href="phase2.html" class="nav-link"><span class="nav-icon">🔧</span>Phase 2 — Preprocessing</a></li>
+    <li><a href="phase3.html" class="nav-link"><span class="nav-icon">🕸️</span>Phase 3 — Graph</a></li>
+    <li><a href="phase4.html" class="nav-link"><span class="nav-icon">⚡</span>Phase 4 — Baselines</a></li>
+    <li><a href="phase5.html" class="nav-link"><span class="nav-icon">🧠</span>Phase 5 — GNN Training</a></li>
+    <li><a href="phase6.html" class="nav-link"><span class="nav-icon">📈</span>Phase 6 — Evaluation</a></li>
+  </ul>
+  <div class="sidebar-footer">UNSW-NB15 &middot; June 2026</div>
+</aside>
+
+<main class="content">
+
+  <div class="page-header">
+    <div class="page-badge">Phase 2</div>
+    <h1>Data Preprocessing</h1>
+    <p class="subtitle">
+      Transforming raw UNSW-NB15 PCAP-derived CSVs into clean, model-ready feature matrices.
+      Covers deduplication, missing value treatment, categorical encoding, feature selection,
+      chronological splitting, and class imbalance correction.
+    </p>
+    <span class="status-badge status-complete">✓ Complete</span>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="section">
+    <h2>📊 Preprocessing Summary</h2>
+    <div class="stat-grid">
+      <div class="stat-box accent">
+        <div class="stat-value">2,540,047</div>
+        <div class="stat-label">Raw Records</div>
+      </div>
+      <div class="stat-box danger">
+        <div class="stat-value">−480,632</div>
+        <div class="stat-label">Duplicates Removed</div>
+      </div>
+      <div class="stat-box success">
+        <div class="stat-value">2,059,415</div>
+        <div class="stat-label">Clean Records</div>
+      </div>
+      <div class="stat-box accent">
+        <div class="stat-value">49 → 37</div>
+        <div class="stat-label">Features (selected)</div>
+      </div>
+      <div class="stat-box warning">
+        <div class="stat-value">3</div>
+        <div class="stat-label">Categorical Features Encoded</div>
+      </div>
+      <div class="stat-box purple">
+        <div class="stat-value">SMOTE</div>
+        <div class="stat-label">Resampling (train only)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pipeline Steps -->
+  <div class="section">
+    <h2>🔄 Preprocessing Pipeline</h2>
+    <ol class="step-list">
+      <li>
+        <div class="step-content">
+          <h4>Duplicate Row Removal</h4>
+          <p>480,632 exact duplicate rows (18.92% of raw data) removed. Duplicates arise from overlapping
+          packet captures across the 4 files. Only fully identical rows across all columns are dropped.</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-content">
+          <h4>Missing Value Treatment</h4>
+          <p><code>ct_flw_http_mthd</code> (53.1% null) and <code>is_ftp_login</code> (56.3% null)
+          filled with 0 — semantically correct as nulls indicate the protocol is absent.
+          Both features excluded from final 37-feature selection.</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-content">
+          <h4>Categorical Encoding</h4>
+          <p><code>proto</code> (135 values), <code>service</code> (13 values), and <code>state</code>
+          (16 values) encoded via ordinal integer mapping ordered by frequency. No one-hot encoding used
+          to keep feature dimensionality low for tree models.</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-content">
+          <h4>Feature Selection (49 → 37)</h4>
+          <p>Removed: IP address columns (<code>srcip</code>, <code>dstip</code>) stored separately for
+          graph construction; timestamp columns (<code>Stime</code>, <code>Ltime</code>, <code>datetime</code>);
+          derived datetime columns; and 2 HTTP/FTP null-heavy columns. Final 37 features cover
+          packet sizes, counts, loads, timings, TTLs, TCP features, and connection-tracking counters.</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-content">
+          <h4>Chronological Train / Val / Test Split</h4>
+          <p>Records sorted by <code>Stime</code> (flow start time) then split 80% / 10% / 10%
+          chronologically to simulate temporal deployment. <strong>No shuffle</strong> — later flows
+          are never seen at train time. This preserves real-world temporal ordering and is the reason
+          for the large val/test distribution shift.</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-content">
+          <h4>Standardisation</h4>
+          <p><code>StandardScaler</code> fitted on training set only; applied to val and test.
+          Applied to all 37 numeric features before feeding to MLP and GNN models. Tree-based
+          models use raw scaled values; MLP/GNN require normalised input for stable gradient flow.</p>
+        </div>
+      </li>
+      <li>
+        <div class="step-content">
+          <h4>Class Imbalance Correction (Train Only)</h4>
+          <p>SMOTE applied to the binary training set to oversample minority (attack) class.
+          For multiclass, <code>RandomOverSampler</code> used to oversample all minority attack categories.
+          Resampling strictly applied to training data only — validation and test sets remain at
+          their natural distributions (val 4.84% attack, test 55.06% attack).</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+
+  <!-- Imbalance Image -->
+  <div class="section">
+    <h2>⚖️ Class Imbalance: Before &amp; After Resampling</h2>
+    <div class="img-grid img-grid-1">
+      <div class="img-card">
+        <img src="../outputs/preprocessed/imbalance_before_after.png" alt="Class Imbalance Before and After SMOTE" loading="lazy">
+        <div class="img-caption">
+          <div class="caption-title">Class Distribution Before (left) and After SMOTE Resampling (right)</div>
+          <div class="caption-text">
+            <strong>Before:</strong> The training set mirrors the raw dataset — Normal flows dominate at
+            ~83% with Attack at ~17%. Models trained on this distribution learn a strong "predict normal"
+            bias that inflates accuracy while depressing recall on attack flows.
+            <strong>After SMOTE:</strong> The binary training set is balanced (50/50). For multiclass,
+            <code>RandomOverSampler</code> brings minority categories (Worms, Shellcode, Analysis) up to a
+            minimum sample floor. This yields models with significantly higher recall on rare attack types
+            at the cost of some precision — a worthwhile trade-off for security applications where missing
+            an attack (false negative) is typically worse than a false alarm.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature List -->
+  <div class="section">
+    <h2>🧬 Final 37 Selected Features</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Feature</th><th>Type</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td><code>proto</code></td><td>Categorical</td><td>Network protocol (TCP/UDP/etc.)</td></tr>
+          <tr><td>2</td><td><code>state</code></td><td>Categorical</td><td>TCP state machine transition</td></tr>
+          <tr><td>3</td><td><code>service</code></td><td>Categorical</td><td>Application service (HTTP, DNS, FTP…)</td></tr>
+          <tr><td>4</td><td><code>dur</code></td><td>Numeric</td><td>Duration of the flow (seconds)</td></tr>
+          <tr><td>5</td><td><code>sbytes</code></td><td>Numeric</td><td>Source-to-destination bytes</td></tr>
+          <tr><td>6</td><td><code>dbytes</code></td><td>Numeric</td><td>Destination-to-source bytes</td></tr>
+          <tr><td>7</td><td><code>sttl</code></td><td>Numeric</td><td>Source TTL — OS fingerprint</td></tr>
+          <tr><td>8</td><td><code>dttl</code></td><td>Numeric</td><td>Destination TTL</td></tr>
+          <tr><td>9</td><td><code>sloss</code></td><td>Numeric</td><td>Source packet retransmission count</td></tr>
+          <tr><td>10</td><td><code>dloss</code></td><td>Numeric</td><td>Destination packet retransmission count</td></tr>
+          <tr><td>11</td><td><code>Sload</code></td><td>Numeric</td><td>Source bits per second</td></tr>
+          <tr><td>12</td><td><code>Dload</code></td><td>Numeric</td><td>Destination bits per second</td></tr>
+          <tr><td>13</td><td><code>Spkts</code></td><td>Numeric</td><td>Source-to-dest packet count</td></tr>
+          <tr><td>14</td><td><code>Dpkts</code></td><td>Numeric</td><td>Destination-to-source packet count</td></tr>
+          <tr><td>15</td><td><code>swin</code></td><td>Numeric</td><td>Source TCP window size</td></tr>
+          <tr><td>16</td><td><code>dwin</code></td><td>Numeric</td><td>Destination TCP window size</td></tr>
+          <tr><td>17</td><td><code>stcpb</code></td><td>Numeric</td><td>Source TCP base sequence number</td></tr>
+          <tr><td>18</td><td><code>dtcpb</code></td><td>Numeric</td><td>Destination TCP base sequence number</td></tr>
+          <tr><td>19</td><td><code>smeansz</code></td><td>Numeric</td><td>Mean source packet size</td></tr>
+          <tr><td>20</td><td><code>dmeansz</code></td><td>Numeric</td><td>Mean destination packet size</td></tr>
+          <tr><td>21</td><td><code>trans_depth</code></td><td>Numeric</td><td>HTTP pipeline depth</td></tr>
+          <tr><td>22</td><td><code>res_bdy_len</code></td><td>Numeric</td><td>HTTP response body length</td></tr>
+          <tr><td>23</td><td><code>Sjit</code></td><td>Numeric</td><td>Source jitter (ms)</td></tr>
+          <tr><td>24</td><td><code>Djit</code></td><td>Numeric</td><td>Destination jitter (ms)</td></tr>
+          <tr><td>25</td><td><code>Sintpkt</code></td><td>Numeric</td><td>Source mean inter-packet time</td></tr>
+          <tr><td>26</td><td><code>Dintpkt</code></td><td>Numeric</td><td>Destination mean inter-packet time</td></tr>
+          <tr><td>27</td><td><code>tcprtt</code></td><td>Numeric</td><td>TCP round-trip time (seconds)</td></tr>
+          <tr><td>28</td><td><code>synack</code></td><td>Numeric</td><td>SYN→ACK time delta</td></tr>
+          <tr><td>29</td><td><code>ackdat</code></td><td>Numeric</td><td>ACK→data time delta</td></tr>
+          <tr><td>30</td><td><code>is_sm_ips_ports</code></td><td>Binary</td><td>Same source/dest IP &amp; port</td></tr>
+          <tr><td>31</td><td><code>ct_state_ttl</code></td><td>Numeric</td><td>State+TTL combination counter</td></tr>
+          <tr><td>32</td><td><code>ct_ftp_cmd</code></td><td>Numeric</td><td>FTP command count in session</td></tr>
+          <tr><td>33</td><td><code>ct_srv_src</code></td><td>Numeric</td><td>Connections to same service, same src in last 100</td></tr>
+          <tr><td>34</td><td><code>ct_srv_dst</code></td><td>Numeric</td><td>Connections to same service, same dst in last 100</td></tr>
+          <tr><td>35</td><td><code>ct_dst_ltm</code></td><td>Numeric</td><td>Connections to same dst in last 100 ms</td></tr>
+          <tr><td>36</td><td><code>ct_src_ltm</code></td><td>Numeric</td><td>Connections from same src in last 100 ms</td></tr>
+          <tr><td>37</td><td><code>ct_dst_src_ltm</code></td><td>Numeric</td><td>Connections to same dst from same src in last 100</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Split Sizes -->
+  <div class="section">
+    <h2>✂️ Final Split Statistics</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Split</th><th>Total Flows</th><th>Normal</th><th>Attack</th><th>Attack %</th><th>After Resampling (binary)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Train</td><td>1,647,526</td><td>1,567,812</td><td>79,714</td><td>4.84%</td><td>~1.57M × 2 (balanced)</td></tr>
+          <tr><td>Val</td><td>411,882</td><td>391,953</td><td>19,929</td><td>4.84%</td><td>Unchanged</td></tr>
+          <tr class="best-row"><td>Test</td><td>82,332</td><td>37,015</td><td>45,317</td><td><strong>55.06%</strong></td><td>Unchanged</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout callout-warning">
+      <strong>⚠️ Test set distribution shift</strong>
+      The test split captures the most recent flows in the dataset. Files 3 and 4 contain substantially
+      higher attack ratios (20–22%), making the test set 55% attack vs only 4.84% in training.
+      This is a realistic scenario for deployed NIDS — models must handle shifting threat landscapes.
+      All models in this project are evaluated on both val (in-distribution) and test (shifted) splits.
+    </div>
+  </div>
+
+  <!-- Saved Artifacts -->
+  <div class="section">
+    <h2>💾 Saved Artifacts</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>File</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>outputs/preprocessed/X_train.npy</code></td><td>Training features (1,647,526 × 37)</td></tr>
+          <tr><td><code>outputs/preprocessed/X_val.npy</code></td><td>Validation features (411,882 × 37)</td></tr>
+          <tr><td><code>outputs/preprocessed/X_test.npy</code></td><td>Test features (82,332 × 37)</td></tr>
+          <tr><td><code>outputs/preprocessed/X_train_binary_resampled.npy</code></td><td>SMOTE-resampled binary training features</td></tr>
+          <tr><td><code>outputs/preprocessed/X_train_multiclass_resampled.npy</code></td><td>Oversampled multiclass training features</td></tr>
+          <tr><td><code>outputs/preprocessed/y_binary_*.npy</code></td><td>Binary labels (train/val/test + resampled)</td></tr>
+          <tr><td><code>outputs/preprocessed/y_multiclass_*.npy</code></td><td>10-class labels (train/val/test + resampled)</td></tr>
+          <tr><td><code>outputs/preprocessed/feature_names.json</code></td><td>Ordered list of 37 feature names</td></tr>
+          <tr><td><code>outputs/preprocessed/node_features.csv</code></td><td>Per-IP node feature matrix for graph construction</td></tr>
+          <tr><td><code>outputs/preprocessed/ip_to_node.json</code></td><td>IP address → node index mapping</td></tr>
+          <tr><td><code>outputs/preprocessed/srcip_train.npy / dstip_train.npy</code></td><td>Source/dest IP arrays for graph edge construction</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="findings-box">
+    <h3>🔑 Phase 2 — Key Findings</h3>
+    <ul>
+      <li><strong>18.92% of rows were exact duplicates</strong> — likely from overlapping PCAP capture boundaries between files.</li>
+      <li><strong>Chronological splitting</strong> deliberately creates distribution shift: val 4.84% vs test 55.06% attack ratio. This simulates temporal deployment and is intentional.</li>
+      <li><strong>SMOTE on train only</strong> — never applied to val/test to preserve their real-world distributions for honest evaluation.</li>
+      <li><strong>StandardScaler fit on train only</strong> — prevents data leakage from val/test statistics influencing normalisation.</li>
+      <li><strong>IP columns stored separately</strong> as node index arrays (<code>srcip_train.npy</code>, <code>dstip_train.npy</code>) for direct use in graph construction without polluting the feature matrix.</li>
+    </ul>
+  </div>
+
+</main>
+
+<script src="js/main.js"></script>
+</body>
+</html>
