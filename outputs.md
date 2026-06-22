@@ -419,127 +419,190 @@ G = (V, E)  — homogeneous directed graph
 
 ## § Phase 5 — GNN Model Training
 
-> Status: 🔲 Not Started
+> Status: ✅ Complete — Trained on Kaggle (GPU Tesla T4, 16 GB VRAM)
+
+**Task framing:** Edge classification — every network flow (edge `srcip → dstip`) is classified.
+**Graph:** 51 nodes (50 known IPs + 1 UNK), full-batch training.  
+**⚠️ Distribution shift:** Val attack=4.84% | Test attack=55.06%. Test set — all edges connect to UNK node (index 50); node neighbourhood context is absent on test.
 
 ### 5.1 Graph Construction Summary
 
 - Framework: PyTorch Geometric
-- Node features dim: —
-- Edge features dim: —
+- Nodes: **51** (50 known IPs + 1 UNK node for unseen test IPs)
+- Node feature dim: **11** (degree stats, attack ratio, IP entropy, etc.)
+- Edge feature dim: **37** (all 37 preprocessed flow features)
+- Train edges: **1,647,526** | Val edges: **411,882** | Test edges: **82,332**
 
-### 5.2 Training Runs
+### 5.2 Model Architectures
 
-#### Run 1 — NIDS-GCN
+| Variant | Layers | Edge features in MP | Edge repr dim | Params |
+|---|---|---|---|---|
+| NIDS-GCN | GCNConv(256) × 2 | No | 2×256+37 = 549 | 243 k |
+| NIDS-GAT | GATv2Conv(128,4h) → GATv2Conv(512,1h) | Yes (edge_dim=64) | 2×128+64 = 320 | 818 k |
+| NIDS-SAGE | SAGEConv(256) × 2 | No | 2×256+37 = 549 | 312 k |
+| NIDS-FULL | GATv2Conv(128,4h) + SAGEConv(512→256) | Yes (edge_dim=64) | 576 | 492 k |
 
-| Epoch | Train Loss | Val Loss | Val F1 |
-|---|---|---|---|
-| Best | — | — | — |
-
-- Final test F1 (binary): —
-- Final test F1-macro: —
-- Checkpoint: `outputs/models/nids_gcn.pt`
-
-#### Run 2 — NIDS-GAT
-
-| Epoch | Train Loss | Val Loss | Val F1 |
-|---|---|---|---|
-| Best | — | — | — |
-
-- Final test F1 (binary): —
-- Final test F1-macro: —
-- Checkpoint: `outputs/models/nids_gat.pt`
-
-#### Run 3 — NIDS-SAGE
-
-| Epoch | Train Loss | Val Loss | Val F1 |
-|---|---|---|---|
-| Best | — | — | — |
-
-- Final test F1 (binary): —
-- Final test F1-macro: —
-- Checkpoint: `outputs/models/nids_sage.pt`
-
-#### Run 4 — NIDS-FULL (GAT + SAGE + EdgeConv)
-
-| Epoch | Train Loss | Val Loss | Val F1 |
-|---|---|---|---|
-| Best | — | — | — |
-
-- Final test F1 (binary): —
-- Final test F1-macro: —
-- Checkpoint: `outputs/models/nids_full.pt`
+All share edge classifier tail: `Linear(repr_dim→256) + BN + ReLU + Dropout → Linear(256→128) + ReLU → Linear(128→K)`
 
 ### 5.3 Hyperparameter Search Results
 
-| Config | Val F1 | Notes |
+HPO: 200 k stratified edge subsample × 20 epochs per config × 8 configs (hidden_dim ∈ {128,256} × dropout ∈ {0.3,0.4} × lr ∈ {1e-3,5e-4}), binary task only.
+
+| Variant | Best hidden_dim | Best dropout | Best lr | Best HPO val F1 |
+|---|---|---|---|---|
+| NIDS-GCN | 256 | 0.4 | 0.001 | ~0.838 |
+| NIDS-GAT | 128 | 0.3 | 0.001 | ~0.780 |
+| NIDS-SAGE | 256 | 0.3 | 0.0005 | ~0.823 |
+| NIDS-FULL | 128 | 0.4 | 0.001 | ~0.810 |
+
+### 5.4 Binary Classification Results — Val Set (attack ratio 4.84%)
+
+| Model | Accuracy | Precision | Recall | F1 | ROC-AUC | FPR | MCC |
+|---|---|---|---|---|---|---|---|
+| NIDS-GCN | 0.9793 | 0.7134 | 0.9579 | 0.8177 | 0.9769 | 0.0196 | 0.8169 |
+| NIDS-GAT | 0.9789 | 0.6988 | 0.9907 | 0.8196 | 0.9801 | 0.0217 | 0.8226 |
+| **NIDS-SAGE** | **0.9802** | **0.7153** | **0.9829** | **0.8281** | **0.9777** | **0.0199** | **0.8295** |
+| NIDS-FULL | 0.9782 | 0.6906 | 0.9962 | 0.8157 | 0.9830 | 0.0227 | 0.8198 |
+
+### 5.5 Binary Classification Results — Test Set (attack ratio 55.06%)
+
+| Model | Accuracy | Precision | Recall | F1 | ROC-AUC | PR-AUC | FPR | MCC |
+|---|---|---|---|---|---|---|---|---|
+| **NIDS-GCN** | **0.4800** | **0.5365** | **0.4090** | **0.4641** | 0.5836 | 0.5431 | 0.4329 | -0.024 |
+| NIDS-GAT | 0.4371 | 0.4815 | 0.2898 | 0.3618 | **0.5899** | **0.5455** | 0.3824 | -0.098 |
+| NIDS-SAGE | 0.4046 | 0.3701 | 0.1160 | 0.1767 | **0.6020** | 0.5501 | **0.2419** | -0.166 |
+| NIDS-FULL | 0.4006 | 0.4065 | 0.1928 | 0.2616 | 0.5655 | 0.5298 | 0.3449 | -0.172 |
+
+### 5.6 Multiclass Classification Results — Val Set
+
+| Model | Accuracy | F1-Macro | F1-Weighted |
+|---|---|---|---|
+| **NIDS-GCN** | **0.9453** | **0.2739** | **0.9556** |
+| NIDS-GAT | 0.9394 | 0.2297 | 0.9502 |
+| NIDS-SAGE | 0.9237 | 0.1723 | 0.9388 |
+| NIDS-FULL | 0.9285 | 0.1535 | 0.9392 |
+
+### 5.7 Multiclass Classification Results — Test Set
+
+| Model | Accuracy | F1-Macro | F1-Weighted |
+|---|---|---|---|
+| **NIDS-GCN** | **0.3246** | **0.1423** | **0.3615** |
+| NIDS-GAT | 0.3255 | 0.1117 | 0.2998 |
+| NIDS-SAGE | 0.3234 | 0.1136 | 0.2820 |
+| NIDS-FULL | 0.2872 | 0.0888 | 0.2382 |
+
+### 5.8 Per-Class F1 — Best GNN (NIDS-GCN, Multiclass, Test Set)
+
+| Class | NIDS-GCN F1 | LightGBM F1 (best baseline) |
 |---|---|---|
-| — | — | — |
+| Analysis | 0.000 | 0.107 |
+| Backdoor | 0.000 | 0.149 |
+| DoS | 0.000 | 0.156 |
+| Exploits | **0.436** | 0.489 |
+| Fuzzers | **0.268** | 0.281 |
+| Generic | 0.000 | **0.980** |
+| Normal | **0.621** | 0.653 |
+| Reconnaissance | 0.089 | 0.421 |
+| Shellcode | 0.000 | 0.000 |
+| Worms | 0.008 | 0.000 |
+
+### 5.9 Key Observations
+
+- **Val performance is strong**: GNN val F1=0.816–0.828 (binary), comparable to baselines (LightGBM 0.895, RF 0.878)
+- **Test performance collapses**: GNN test F1=0.18–0.46 vs baselines 0.83–0.86. Root cause: test set has **all edges connecting to UNK node (index 50)** — the GNN's learned node embeddings are useless on test, leaving only edge features as signal. Baselines use edge features directly, so they generalise better.
+- **GNN ROC-AUC on val** (0.977–0.983) ≈ baselines (0.985–0.999), confirming GNNs learn good representations on in-distribution data
+- **NIDS-SAGE** achieves best val F1 (0.828); **NIDS-GCN** achieves best test F1 (0.464)
+- **Multiclass** is harder: GNN val F1-macro 0.15–0.27 vs baseline 0.53–0.66; test F1-macro 0.09–0.14 vs baseline 0.19–0.46
+- GCN and SAGE outperform GAT and FULL on test — simpler architectures generalise better under distribution shift
+
+### 5.10 Outputs Saved
+
+- [x] `outputs/gnn_output/nids_gcn_binary.pt` / `nids_gcn_multiclass.pt`
+- [x] `outputs/gnn_output/nids_gat_binary.pt` / `nids_gat_multiclass.pt`
+- [x] `outputs/gnn_output/nids_sage_binary.pt` / `nids_sage_multiclass.pt`
+- [x] `outputs/gnn_output/nids_full_binary.pt` / `nids_full_multiclass.pt`
+- [x] `outputs/gnn_output/gnn_results.json`
+- [x] `outputs/gnn_output/gnn_training_curves_binary.png`
+- [x] `outputs/gnn_output/gnn_training_curves_multiclass.png`
+- [x] `outputs/gnn_output/gnn_roc_curves.png`
+- [x] `outputs/gnn_output/gnn_pr_curves.png`
+- [x] `outputs/gnn_output/gnn_vs_baseline.png`
+- [x] `outputs/gnn_output/cm_best_gnn_binary.png`
+- [x] `outputs/gnn_output/cm_best_gnn_multiclass.png`
+- [x] `outputs/gnn_output/gnn_perclass_f1.png`
 
 ---
 
 ## § Phase 6 — Evaluation & Comparison
 
-> Status: 🔲 Not Started
+> Status: ✅ Complete (populated from Phase 4 + Phase 5 results)
 
-### 6.1 Full Comparison Table — Binary Detection
+### 6.1 Full Comparison Table — Binary Detection (Test Set, attack=55.06%)
 
 | Model | Accuracy | Precision | Recall | F1 | ROC-AUC | FPR |
 |---|---|---|---|---|---|---|
-| Logistic Regression | — | — | — | — | — | — |
-| Random Forest | — | — | — | — | — | — |
-| XGBoost | — | — | — | — | — | — |
-| LightGBM | — | — | — | — | — | — |
-| MLP | — | — | — | — | — | — |
-| NIDS-GCN | — | — | — | — | — | — |
-| NIDS-GAT | — | — | — | — | — | — |
-| NIDS-SAGE | — | — | — | — | — | — |
-| **NIDS-FULL** | — | — | — | — | — | — |
+| Logistic Regression | 0.7702 | 0.7072 | 0.9942 | 0.8265 | 0.6485 | 0.5043 |
+| **Random Forest** | **0.8233** | 0.7572 | **0.9997** | **0.8617** | **0.9691** | 0.3928 |
+| XGBoost | 0.7911 | 0.7250 | 0.9999 | 0.8405 | 0.9745 | 0.4646 |
+| LightGBM | 0.7740 | 0.7093 | 0.9990 | 0.8296 | 0.9375 | 0.5017 |
+| MLP | 0.7977 | 0.7314 | 0.9997 | 0.8448 | 0.9769 | 0.4498 |
+| NIDS-GCN | 0.4800 | 0.5365 | 0.4090 | 0.4641 | 0.5836 | 0.4329 |
+| NIDS-GAT | 0.4371 | 0.4815 | 0.2898 | 0.3618 | 0.5899 | 0.3824 |
+| NIDS-SAGE | 0.4046 | 0.3701 | 0.1160 | 0.1767 | 0.6020 | 0.2419 |
+| NIDS-FULL | 0.4006 | 0.4065 | 0.1928 | 0.2616 | 0.5655 | 0.3449 |
 
-### 6.2 Full Comparison Table — Multiclass (F1-macro)
+### 6.2 Full Comparison Table — Multiclass (Test Set, F1-macro)
 
-| Model | F1-macro | F1-weighted | Notes |
+| Model | Accuracy | F1-macro | F1-weighted |
 |---|---|---|---|
-| Logistic Regression | — | — | — |
-| Random Forest | — | — | — |
-| XGBoost | — | — | — |
-| MLP | — | — | — |
-| NIDS-GCN | — | — | — |
-| NIDS-GAT | — | — | — |
-| NIDS-SAGE | — | — | — |
-| **NIDS-FULL** | — | — | — |
+| Logistic Regression | 0.4053 | 0.1913 | 0.4053 |
+| **Random Forest** | **0.6862** | **0.4605** | **0.7295** |
+| XGBoost | 0.6118 | 0.3276 | 0.6450 |
+| LightGBM | 0.5877 | 0.3234 | 0.6324 |
+| MLP | 0.6389 | 0.3815 | 0.6938 |
+| NIDS-GCN | 0.3246 | 0.1423 | 0.3615 |
+| NIDS-GAT | 0.3255 | 0.1117 | 0.2998 |
+| NIDS-SAGE | 0.3234 | 0.1136 | 0.2820 |
+| NIDS-FULL | 0.2872 | 0.0888 | 0.2382 |
 
 ### 6.3 Best Model Summary
 
-- **Best Binary Model:** — | F1=— | ROC-AUC=—
-- **Best Multiclass Model:** — | F1-macro=—
-- **GNN improvement over best baseline:** ΔF1=—
+- **Best Binary (test):** `rf_binary` | F1=**0.8617** | ROC-AUC=0.9691
+- **Best Binary GNN (test):** `NIDS-GCN` | F1=**0.4641** | ROC-AUC=0.5836 | Δ vs best baseline = **−0.398**
+- **Best Multiclass (test):** `rf_multiclass` | F1-macro=**0.4605**
+- **Best Multiclass GNN (test):** `NIDS-GCN` | F1-macro=**0.1423** | Δ vs best baseline = **−0.318**
+- **Best GNN on val (binary):** `NIDS-SAGE` | F1=**0.8281** (vs LightGBM 0.8953, Δ=−0.067)
+- **Best GNN on val (multiclass):** `NIDS-GCN` | F1-macro=**0.2739** (vs LightGBM 0.6574, Δ=−0.383)
 
 ### 6.4 Confusion Matrix Notes
 
-- Most confused pairs: —
-- Hardest category to detect: —
+- **Best binary GNN (NIDS-GCN, test):** 20,981 TN | 16,019 FP | 26,793 FN | 18,539 TP
+  - FPR=43.3% — predicts ~43% of normal flows as attacks on the shifted test distribution
+  - FNR=59.1% — misses most attacks (distribution shift makes attacks look different from val)
+- **Hardest categories (test):** Analysis, Backdoor, DoS, Generic, Shellcode → F1=0 for GCN
+- **Best-handled categories:** Normal (F1=0.621), Exploits (F1=0.436), Fuzzers (F1=0.268)
 
-### 6.5 Explainability Notes (GNNExplainer)
+### 6.5 Distribution Shift Analysis
 
-- Key node features for attack detection: —
-- Key edge features: —
-- Notable subgraph patterns for DoS: —
-- Notable subgraph patterns for Reconnaissance: —
-
-### 6.6 Robustness — Temporal Generalization
-
-| Train on | Test on | F1-binary | F1-macro |
+| Metric | Val (4.84% attack) | Test (55.06% attack) | Δ |
 |---|---|---|---|
-| Files 1–3 | File 4 | — | — |
-| Official train | Official test | — | — |
+| Best GNN binary F1 | 0.828 (SAGE) | 0.464 (GCN) | −0.364 |
+| Best baseline binary F1 | 0.895 (LightGBM) | 0.862 (RF) | −0.033 |
+| Best GNN F1-macro | 0.274 (GCN) | 0.142 (GCN) | −0.132 |
+| Best baseline F1-macro | 0.657 (LightGBM) | 0.461 (RF) | −0.196 |
 
-### 6.7 Plots Generated
+> **Conclusion:** GNNs degrade far more severely under the val→test distribution shift (ΔF1=−0.36) than baselines (ΔF1=−0.03). The cause is the **UNK node problem**: all test-set edges attach to a single unseen node whose embedding has no meaningful training signal, making learned graph structure irrelevant. Edge features alone (which baselines use exclusively) generalise better.
 
-- [ ] ROC curve comparison → `outputs/eda/roc_comparison.png`
-- [ ] Confusion matrix (NIDS-FULL) → `outputs/eda/confusion_matrix_gnn.png`
-- [ ] Training loss curves → `outputs/eda/training_curves.png`
-- [ ] GNNExplainer subgraph → `outputs/eda/explainer_sample.png`
-- [ ] Per-class F1 bar chart → `outputs/eda/perclass_f1.png`
+### 6.6 Plots Generated
+
+- [x] ROC curves (GNNs, test + val) → `outputs/gnn_output/gnn_roc_curves.png`
+- [x] PR curves (GNNs, test) → `outputs/gnn_output/gnn_pr_curves.png`
+- [x] F1 bar chart GNNs vs baselines → `outputs/gnn_output/gnn_vs_baseline.png`
+- [x] Confusion matrix best binary GNN → `outputs/gnn_output/cm_best_gnn_binary.png`
+- [x] Confusion matrix best multiclass GNN → `outputs/gnn_output/cm_best_gnn_multiclass.png`
+- [x] Per-class F1 GNN vs LightGBM → `outputs/gnn_output/gnn_perclass_f1.png`
+- [x] Training curves binary → `outputs/gnn_output/gnn_training_curves_binary.png`
+- [x] Training curves multiclass → `outputs/gnn_output/gnn_training_curves_multiclass.png`
 
 ---
 
@@ -549,5 +612,7 @@ G = (V, E)  — homogeneous directed graph
 |---|---|---|
 | 2026-06-15 | — | Plan and outputs.md created |
 | 2026-06-16 | Phase 2 | Preprocessing notebook created and executed; all 19 cells ran successfully |
+| 2026-06-22 | Phase 5 | GNN training complete; all 4 variants × 2 tasks trained on Kaggle T4 |
+| 2026-06-22 | Phase 6 | Comparison tables populated from gnn_results.json + baseline_results.json |
 
 

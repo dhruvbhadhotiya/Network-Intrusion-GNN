@@ -56,3 +56,5 @@ EDA.ipynb
 dist/
 build/
 *.egg-info/
+
+*.zip
